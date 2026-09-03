@@ -1,0 +1,91 @@
+---
+// Diálogo global de pasaporte: lo abren el header, la bitácora bloqueada y la
+// expiración de la sesión. La lógica vive en scripts/session-hud.ts.
+---
+
+<dialog
+  id="passport-dialog"
+  class="passport-dialog glass"
+  data-passport-scope
+  data-passport-mode="login"
+  aria-labelledby="passport-dialog-title"
+>
+  <div class="passport-dialog-body">
+    <button class="modal-close" type="button" data-close-passport aria-label="Cerrar pasaporte">
+      ×
+    </button>
+    <span class="section-kicker">Control de pasaportes</span>
+    <h2 id="passport-dialog-title" data-passport-title>Ingresa a tu pasaporte</h2>
+    <p class="passport-copy" data-passport-copy>
+      Usa el correo y la clave con los que creaste tu cuenta.
+    </p>
+
+    <div class="view-tabs passport-tabs" role="tablist" aria-label="Modo de pasaporte">
+      <button
+        class="view-tab active"
+        type="button"
+        role="tab"
+        aria-selected="true"
+        data-passport-mode="login"
+      >
+        Ya tengo pasaporte
+      </button>
+      <button
+        class="view-tab"
+        type="button"
+        role="tab"
+        aria-selected="false"
+        data-passport-mode="register"
+      >
+        Crear pasaporte
+      </button>
+    </div>
+
+    <form id="passport-form" novalidate data-astro-reload>
+      <p class="credit-badge" data-register-only>
+        <span aria-hidden="true">✦</span>
+        +5.000 créditos de bienvenida
+      </p>
+      <label class="field" data-register-only>
+        <span class="field-label">Nombre completo</span>
+        <input
+          class="control"
+          name="fullName"
+          type="text"
+          autocomplete="name"
+          placeholder="Ej: Morty Smith"
+        >
+      </label>
+      <label class="field">
+        <span class="field-label">Correo del pasaporte</span>
+        <input
+          class="control"
+          name="email"
+          type="email"
+          autocomplete="email"
+          placeholder="morty@email.com"
+        >
+      </label>
+      <label class="field">
+        <span class="field-label">Clave <small>8 caracteres o más</small></span>
+        <span class="password-field">
+          <input
+            class="control"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            minlength="8"
+            maxlength="64"
+          >
+          <button class="password-toggle" type="button" data-toggle-password aria-pressed="false">
+            Mostrar
+          </button>
+        </span>
+      </label>
+      <div class="form-errors" data-passport-errors role="alert" hidden></div>
+      <button class="btn btn-primary submit-btn" type="submit">
+        <span data-passport-submit>Ingresar</span><span aria-hidden="true">→</span>
+      </button>
+    </form>
+  </div>
+</dialog>

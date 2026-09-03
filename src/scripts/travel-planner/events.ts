@@ -1,22 +1,34 @@
 import { PlannerView } from 'models/reservation';
+import { setPassportMode } from 'scripts/passport';
+import { SHOW_RESERVATIONS_EVENT } from 'scripts/session-hud';
 import {
   readDraft,
   renderBookingApiState,
   renderCompanions,
+  renderPassportStep,
   renderQuote,
   showFormErrors,
   submitReservation,
   syncFormFromDraft,
   updateCompanions,
 } from 'scripts/travel-planner/booking';
-import { hideBrokenDestinationImage, loadCatalog } from 'scripts/travel-planner/catalog';
+import {
+  changePage,
+  hideBrokenDestinationImage,
+  renderCatalog,
+} from 'scripts/travel-planner/catalog';
 import { element, tomorrow } from 'scripts/travel-planner/helpers';
 import { showToast } from 'scripts/travel-planner/notifications';
-import { setActiveView } from 'scripts/travel-planner/reservations';
+import {
+  loadReservations,
+  renderReservations,
+  setActiveView,
+} from 'scripts/travel-planner/reservations';
+import { sessionStore } from 'stores/sessionStore';
 import { travelStore } from 'stores/travelStore';
 
 const MAX_COMPANIONS = 3;
-const SEARCH_DELAY_MS = 350;
+const SEARCH_DELAY_MS = 250;
 let searchTimer: number | undefined;
 
 function persistFormDraft(): void {
@@ -32,7 +44,7 @@ function bindDestinationSelection(destinationGrid: HTMLDivElement): void {
     const id = Number(button.dataset.bookLocation);
     travelStore.getState().setDraft({ destinationId: id, companionIds: [] });
     syncFormFromDraft();
-    void updateCompanions(id);
+    updateCompanions(id);
     element('#reserva').scrollIntoView({ behavior: 'smooth', block: 'start' });
     showToast('Destino añadido a tu ruta', 'success');
   });
@@ -40,8 +52,23 @@ function bindDestinationSelection(destinationGrid: HTMLDivElement): void {
 
 function bindBookingEvents(bookingForm: HTMLFormElement): void {
   element<HTMLInputElement>('#travelDate').min = tomorrow();
-  bookingForm.addEventListener('submit', submitReservation);
-  bookingForm.addEventListener('input', () => {
+  bookingForm.addEventListener('submit', (event) => void submitReservation(event));
+  bookingForm.addEventListener('input', (event) => {
+    // Los campos del pasaporte no alteran el borrador ni la cotización.
+    if (event.target instanceof Element && event.target.closest('#passport-step')) {
+      if (event.target instanceof HTMLInputElement && event.target.name === 'fullName') {
+        event.target.dataset.touched = 'true';
+      }
+      showFormErrors([]);
+      return;
+    }
+    // El nombre del pasajero sugiere el nombre del pasaporte hasta que se edite a mano.
+    if (event.target instanceof HTMLInputElement && event.target.name === 'passengerName') {
+      const fullName = document.getElementById('fullName');
+      if (fullName instanceof HTMLInputElement && !fullName.dataset.touched) {
+        fullName.value = event.target.value;
+      }
+    }
     persistFormDraft();
     showFormErrors([]);
     renderQuote();
@@ -49,7 +76,7 @@ function bindBookingEvents(bookingForm: HTMLFormElement): void {
   element<HTMLSelectElement>('#destinationId').addEventListener('change', (event) => {
     travelStore.getState().setDraft({ companionIds: [] });
     renderCompanions();
-    void updateCompanions(Number((event.currentTarget as HTMLSelectElement).value));
+    updateCompanions(Number((event.currentTarget as HTMLSelectElement).value));
   });
   element<HTMLDivElement>('#companion-grid').addEventListener('change', (event) => {
     if (!(event.target instanceof HTMLElement)) return;
@@ -74,22 +101,32 @@ function bindBookingEvents(bookingForm: HTMLFormElement): void {
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
   });
+  // El paso de pasaporte alterna entre crear cuenta e ingresar sin salir del formulario.
+  element<HTMLElement>('#passport-step').addEventListener('click', (event) => {
+    if (!(event.target instanceof Element)) return;
+    const switcher = event.target.closest<HTMLButtonElement>('[data-passport-mode]');
+    if (!switcher) return;
+    setPassportMode(
+      element('#passport-step'),
+      switcher.dataset.passportMode === 'login' ? 'login' : 'register',
+    );
+    renderPassportStep();
+    showFormErrors([]);
+  });
 }
 
-// Paginación y filtros solo actualizan la store y solicitan nuevamente la página uno.
+// Paginación y filtros solo tocan la store: el catálogo completo ya está en memoria.
 function bindCatalogEvents(): void {
-  element<HTMLButtonElement>('#previous-page').addEventListener(
-    'click',
-    () => void loadCatalog(travelStore.getState().locationsPage - 1),
+  element<HTMLButtonElement>('#previous-page').addEventListener('click', () =>
+    changePage(travelStore.getState().locationsPage - 1),
   );
-  element<HTMLButtonElement>('#next-page').addEventListener(
-    'click',
-    () => void loadCatalog(travelStore.getState().locationsPage + 1),
+  element<HTMLButtonElement>('#next-page').addEventListener('click', () =>
+    changePage(travelStore.getState().locationsPage + 1),
   );
   element<HTMLSelectElement>('#type-filter').addEventListener('change', (event) => {
     const state = travelStore.getState();
     state.setFilters(state.search, (event.currentTarget as HTMLSelectElement).value);
-    void loadCatalog(1);
+    renderCatalog();
   });
   element<HTMLInputElement>('#location-search').addEventListener('input', (event) => {
     window.clearTimeout(searchTimer);
@@ -97,12 +134,12 @@ function bindCatalogEvents(): void {
     searchTimer = window.setTimeout(() => {
       const state = travelStore.getState();
       state.setFilters(search, state.typeFilter);
-      void loadCatalog(1);
+      renderCatalog();
     }, SEARCH_DELAY_MS);
   });
 }
 
-function bindNavigationEvents(): void {
+function bindNavigationEvents(signal: AbortSignal): void {
   document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((tab) => {
     tab.addEventListener('click', () => {
       const view = tab.dataset.view;
@@ -111,21 +148,43 @@ function bindNavigationEvents(): void {
       }
     });
   });
-  element<HTMLButtonElement>('#header-reservations').addEventListener('click', () => {
+  const showReservations = (): void => {
     setActiveView(PlannerView.RESERVATIONS);
     element('.catalog-column').scrollIntoView({ behavior: 'smooth' });
-  });
+  };
+  element<HTMLButtonElement>('#header-reservations').addEventListener('click', showReservations);
+  document.addEventListener(SHOW_RESERVATIONS_EVENT, showReservations, { signal });
 }
 
 // Refleja automáticamente los cambios de loading/error de Zustand en el formulario.
 function bindApiState(): () => void {
   const unsubscribe = travelStore.subscribe((state, previousState) => {
-    if (state.loading !== previousState.loading || state.error !== previousState.error) {
+    if (
+      state.loading !== previousState.loading ||
+      state.error !== previousState.error ||
+      state.locations !== previousState.locations
+    ) {
       renderBookingApiState();
     }
   });
   renderBookingApiState();
   return unsubscribe;
+}
+
+// Entrar, salir o cambiar de saldo repinta pasaporte, cotización y bitácora.
+function bindSessionState(): () => void {
+  return sessionStore.subscribe((state, previousState) => {
+    const token = state.session?.accessToken;
+    const previousToken = previousState.session?.accessToken;
+    renderPassportStep();
+    renderQuote();
+    if (token !== previousToken) {
+      showFormErrors([]);
+      void loadReservations();
+    } else if (state.session?.user.balance !== previousState.session?.user.balance) {
+      renderReservations();
+    }
+  });
 }
 
 export function bindEvents(): boolean {
@@ -152,8 +211,9 @@ export function bindEvents(): boolean {
   bindDestinationSelection(destinationGrid);
   bindBookingEvents(bookingForm);
   bindCatalogEvents();
-  bindNavigationEvents();
+  bindNavigationEvents(lifecycle.signal);
   const unsubscribeApiState = bindApiState();
+  const unsubscribeSession = bindSessionState();
 
   // Al saltar a otra página el formulario desaparece: se liberan los listeners globales
   // para que la store no intente renderizar un DOM que ya no existe.
@@ -162,6 +222,7 @@ export function bindEvents(): boolean {
     () => {
       lifecycle.abort();
       unsubscribeApiState();
+      unsubscribeSession();
     },
     { once: true },
   );

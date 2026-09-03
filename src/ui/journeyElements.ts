@@ -1,8 +1,19 @@
-import { type Reservation, ReservationStatus } from 'models/reservation';
-import type { Character, Episode, Location } from 'models/rick-and-morty';
-import { getIdFromUrl } from 'services/rickAndMortyApi';
-import type { ApiErrorView } from 'services/rickAndMortyApiError';
+import type { Character, Episode, Location } from 'models/catalog';
+import {
+  type Reservation,
+  ReservationStatus,
+  riskClassNames,
+  riskLabels,
+  tripTypeLabels,
+} from 'models/reservation';
+import type { ApiErrorView } from 'services/portalTripApiError';
 import { createElement, createFragment, createImage } from 'ui/dom';
+
+const UNKNOWN_PLACE = 'lugar desconocido';
+
+function placeName(reference: Character['origin']): string {
+  return reference?.name ?? UNKNOWN_PLACE;
+}
 
 type RelationKind = 'residents' | 'episodes';
 
@@ -44,9 +55,8 @@ export function createCharacterStory(
   character: Character,
   episodeMap: Map<number, Episode>,
 ): HTMLElement {
-  const episodes = character.episode
+  const episodes = character.episodeIds
     .slice(0, 3)
-    .map(getIdFromUrl)
     .map((id) => episodeMap.get(id))
     .filter((episode): episode is Episode => Boolean(episode));
   const history = createElement('ol');
@@ -56,9 +66,9 @@ export function createCharacterStory(
         createElement(
           'li',
           {},
-          createElement('span', { text: episode.episode }),
+          createElement('span', { text: episode.code }),
           createElement('b', { text: episode.name }),
-          createElement('small', { text: episode.air_date }),
+          createElement('small', { text: episode.airDate }),
         ),
       );
     });
@@ -89,13 +99,13 @@ export function createCharacterStory(
     'p',
     { className: 'character-story' },
     createElement('b', { text: character.name }),
-    ` se originó en ${character.origin.name}. Su última señal conocida proviene de ${character.location.name} y aparece en ${character.episode.length} registros de aventuras.`,
+    ` se originó en ${placeName(character.origin)}. Su última señal conocida proviene de ${placeName(character.location)} y aparece en ${character.episodeIds.length} registros de aventuras.`,
   );
   const details = createElement(
     'dl',
     {},
-    createDefinition('Origen', character.origin.name),
-    createDefinition('Ubicación actual', character.location.name),
+    createDefinition('Origen', placeName(character.origin)),
+    createDefinition('Ubicación actual', placeName(character.location)),
     createDefinition('Género', character.gender),
   );
   const episodeHistory = createElement(
@@ -139,7 +149,7 @@ export function createRelatedResident(character: Character, index: number): HTML
     createElement(
       'strong',
       {},
-      character.episode.length,
+      character.episodeIds.length,
       createElement('small', { text: 'episodios' }),
     ),
   );
@@ -150,9 +160,7 @@ export function createRelatedEpisode(
   residentIds: Set<number>,
   index: number,
 ): HTMLButtonElement {
-  const relatedResidents = episode.characters
-    .map(getIdFromUrl)
-    .filter((id) => residentIds.has(id)).length;
+  const relatedResidents = episode.characterIds.filter((id) => residentIds.has(id)).length;
   return createElement(
     'button',
     {
@@ -160,12 +168,12 @@ export function createRelatedEpisode(
       attrs: { type: 'button', 'aria-label': `Ver información del capítulo ${episode.name}` },
       dataset: { episodeId: episode.id },
     },
-    createElement('span', { text: episode.episode }),
+    createElement('span', { text: episode.code }),
     createElement(
       'div',
       {},
       createElement('h3', { text: episode.name }),
-      createElement('p', { text: episode.air_date }),
+      createElement('p', { text: episode.airDate }),
     ),
     createElement(
       'strong',
@@ -181,8 +189,7 @@ export function createCharacterModal(
   character: Character,
   episodeMap: Map<number, Episode>,
 ): DocumentFragment {
-  const episodes = character.episode
-    .map(getIdFromUrl)
+  const episodes = character.episodeIds
     .map((id) => episodeMap.get(id))
     .filter((item): item is Episode => Boolean(item));
   const portraitImage = createImage(character.image, `Retrato de ${character.name}`);
@@ -208,10 +215,10 @@ export function createCharacterModal(
     createElement(
       'dl',
       { className: 'modal-data' },
-      createDefinition('Origen', character.origin.name),
-      createDefinition('Ubicación actual', character.location.name),
+      createDefinition('Origen', placeName(character.origin)),
+      createDefinition('Ubicación actual', placeName(character.location)),
       createDefinition('Género', character.gender),
-      createDefinition('Episodios', character.episode.length),
+      createDefinition('Episodios', character.episodeIds.length),
     ),
   );
 
@@ -222,9 +229,9 @@ export function createCharacterModal(
         createElement(
           'article',
           {},
-          createElement('b', { text: episode.episode }),
+          createElement('b', { text: episode.code }),
           createElement('span', { text: episode.name }),
-          createElement('small', { text: episode.air_date }),
+          createElement('small', { text: episode.airDate }),
         ),
       );
     });
@@ -246,22 +253,22 @@ export function createCharacterModal(
 }
 
 export function createEpisodeModal(episode: Episode, residents: Character[]): DocumentFragment {
-  const participantIds = new Set(episode.characters.map(getIdFromUrl));
+  const participantIds = new Set(episode.characterIds);
   const relatedResidents = residents.filter((resident) => participantIds.has(resident.id));
   const fragment = createFragment(
     createElement(
       'div',
       { className: 'modal-episode-hero' },
-      createElement('span', { text: episode.episode }),
+      createElement('span', { text: episode.code }),
       createElement('p', { className: 'modal-kicker', text: 'ARCHIVO DE CAPÍTULO' }),
       createElement('h2', { id: 'modal-title', text: episode.name }),
-      createElement('p', { text: `Emitido el ${episode.air_date}` }),
+      createElement('p', { text: `Emitido el ${episode.airDate}` }),
     ),
     createElement(
       'dl',
       { className: 'modal-data episode-data' },
-      createDefinition('Código', episode.episode),
-      createDefinition('Personajes totales', episode.characters.length),
+      createDefinition('Código', episode.code),
+      createDefinition('Personajes totales', episode.characterIds.length),
       createDefinition('Residentes relacionados', relatedResidents.length),
     ),
   );
@@ -408,7 +415,7 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
       'span',
       { className: 'destination-label' },
       createElement('b', { text: destination.type }),
-      `${destination.residents.length} residentes registrados`,
+      `${destination.residentIds.length} residentes registrados`,
     ),
   );
 
@@ -448,8 +455,8 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
       createMissionItem('Dimensión', destination.dimension),
       createMissionItem(
         'Riesgo',
-        reservation.quote.risk,
-        `mission-risk ${reservation.quote.risk.toLowerCase()}`,
+        riskLabels[reservation.quote.risk],
+        `mission-risk ${riskClassNames[reservation.quote.risk]}`,
       ),
       createMissionItem('Inversión', data.formattedTotal),
     ),
@@ -470,21 +477,21 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
         '01',
         'Preparación',
         `Portal calibrado hacia ${destination.name}`,
-        `Tu grupo cruza el control interdimensional con ${reservation.passengers} pasajero${reservation.passengers === 1 ? '' : 's'} y un plan ${reservation.tripType}.`,
+        `Tu grupo cruza el control interdimensional con ${reservation.passengers} pasajero${reservation.passengers === 1 ? '' : 's'} y un plan ${tripTypeLabels[reservation.tripType].toLowerCase()}.`,
       ),
       createTimelineStep(
         '02',
         'Cruce de portal',
         `Entrada a ${destination.dimension}`,
-        `${destination.name} está clasificado como ${destination.type}. La agencia registra un nivel de riesgo ${reservation.quote.risk.toLowerCase()} para esta coordenada.`,
+        `${destination.name} está clasificado como ${destination.type}. La agencia registra un nivel de riesgo ${riskLabels[reservation.quote.risk].toLowerCase()} para esta coordenada.`,
       ),
       createTimelineStep(
         '03',
         'Encuentro',
-        destination.residents.length
-          ? `${destination.residents.length} señales residentes detectadas`
+        destination.residentIds.length
+          ? `${destination.residentIds.length} señales residentes detectadas`
           : 'Silencio total en el destino',
-        destination.residents.length
+        destination.residentIds.length
           ? 'Los retratos de la zona fueron recuperados desde el catálogo de residentes de la ubicación.'
           : 'No existen residentes registrados; el seguro y los protocolos de retorno permanecen activos.',
       ),
@@ -520,7 +527,7 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
   const relationDescription = document.createDocumentFragment();
   relationDescription.append(
     'Usuarios vinculados directamente por ',
-    createElement('code', { text: 'location.residents' }),
+    createElement('code', { text: 'location.residentIds' }),
   );
   fragment.append(
     createElement(
@@ -621,7 +628,7 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
       }),
       createElement('p', {
         text: isCompleted
-          ? 'La expedición quedó registrada como completada en este dispositivo.'
+          ? 'La expedición quedó registrada como completada en la Ciudadela.'
           : 'Cuando regreses del portal, completa el viaje para cerrar la expedición.',
         dataset: { finaleCopy: '' },
       }),
@@ -636,7 +643,10 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
   return fragment;
 }
 
-export function createJourneyError(error: ApiErrorView | string): DocumentFragment {
+export function createJourneyError(
+  error: ApiErrorView | string,
+  action?: HTMLElement,
+): DocumentFragment {
   const isApiError = typeof error !== 'string';
   const title = isApiError ? error.title : 'El portal no pudo abrirse';
   const message = isApiError ? error.message : error;
@@ -663,6 +673,7 @@ export function createJourneyError(error: ApiErrorView | string): DocumentFragme
   );
 
   const actions = createElement('div', { className: 'mt-5 flex flex-wrap justify-center gap-2.5' });
+  if (action) actions.append(action);
   if (isApiError)
     actions.append(
       createElement('button', {

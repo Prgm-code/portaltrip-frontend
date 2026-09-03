@@ -1,5 +1,11 @@
 ---
-import { IconArrowRight, IconPlanet, IconShieldCheck, IconUsers } from '@tabler/icons-astro';
+import {
+  IconArrowRight,
+  IconCoins,
+  IconPlanet,
+  IconShieldCheck,
+  IconUsers,
+} from '@tabler/icons-astro';
 import BookingPanel from 'components/BookingPanel.astro';
 import DestinationCatalog from 'components/DestinationCatalog.astro';
 import Header from 'components/Header.astro';
@@ -47,6 +53,10 @@ import 'styles/home.css';
             <IconShieldCheck size={16} stroke={1.8} aria-hidden="true" />
             Seguro interdimensional
           </li>
+          <li>
+            <IconCoins size={16} stroke={1.8} aria-hidden="true" />
+            5.000 créditos al crear tu pasaporte
+          </li>
         </ul>
       </div>
 
@@ -56,6 +66,7 @@ import 'styles/home.css';
           <span class="hud-label">Coordenadas</span>
           <code>ORIGEN · TIERRA C-137</code>
           <code class="dim">DESTINO · PENDIENTE</code>
+          <code class="passport-readout" data-readout-passport hidden></code>
         </section>
         <div class="credit-chip hero-credit">
           <span>Misión avalada por</span>
@@ -106,7 +117,6 @@ import 'styles/home.css';
 
   <SiteFooter />
 
-  <div id="toast-region" class="toast-region" aria-live="polite"></div>
   <script>
   import 'scripts/app';
   </script>

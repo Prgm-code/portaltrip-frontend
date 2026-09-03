@@ -1,5 +1,5 @@
 ---
-import { IconArrowLeft, IconArrowRight } from '@tabler/icons-astro';
+import { IconArrowLeft, IconArrowRight, IconChevronDown, IconLogout } from '@tabler/icons-astro';
 import PortalLogo from 'components/PortalLogo.astro';
 import UplinkStatus from 'components/UplinkStatus.astro';
 
@@ -30,12 +30,51 @@ const { mode = 'home' } = Astro.props;
       )}
     <div class="hud-right">
       <UplinkStatus class="hud-uplink" />
-      {mode === 'home' && (
-          <a href="#reserva" class="btn btn-primary hud-cta">
-            Abrir portal
-            <IconArrowRight size={16} stroke={2.2} aria-hidden="true" />
-          </a>
-        )}
+
+      <div class="hud-session" data-session-anonymous>
+        <button class="btn btn-ghost hud-cta" type="button" data-open-passport="login">
+          Ingresar
+        </button>
+        {mode === 'home' && (
+            <a href="#reserva" class="btn btn-primary hud-cta">
+              Abrir portal
+              <IconArrowRight size={16} stroke={2.2} aria-hidden="true" />
+            </a>
+          )}
+      </div>
+
+      <div class="hud-session" data-session-authenticated hidden>
+        <div class="account">
+          <button
+            class="hud-account"
+            id="account-chip"
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            aria-label="Cuenta y saldo"
+          >
+            <i aria-hidden="true"></i>
+            <span data-account-name>Pasaporte</span>
+            <em data-account-balance>0 CR</em>
+            <IconChevronDown size={14} stroke={2} aria-hidden="true" />
+          </button>
+          <div class="account-menu" data-account-menu role="menu" hidden>
+            <p class="account-email" data-account-email></p>
+            <a role="menuitem" href="/#destinos" data-open-reservations>Mis reservas</a>
+            <button role="menuitem" type="button" data-logout>
+              <IconLogout size={14} stroke={2} aria-hidden="true" />
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+        {mode === 'home' && (
+            <a href="#reserva" class="btn btn-primary hud-cta">
+              Abrir portal
+              <IconArrowRight size={16} stroke={2.2} aria-hidden="true" />
+            </a>
+          )}
+      </div>
+
       {mode === 'journey' && (
           <a href="/" class="btn btn-ghost hud-cta">
             <IconArrowLeft size={16} stroke={2.2} aria-hidden="true" />

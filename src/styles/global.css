@@ -4,6 +4,7 @@
 @import "./base.css";
 @import "./transitions.css";
 @import "./ui.css";
+@import "./auth.css";
 
 body {
   font-size: 16px;

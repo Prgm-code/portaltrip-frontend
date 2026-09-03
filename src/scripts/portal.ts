@@ -378,7 +378,7 @@ function startPortal(canvas: HTMLCanvasElement): void {
     host.addEventListener(
       'pointermove',
       (event) => {
-        aimFromPointer(event.clientX, event.clientY);
+        if (event instanceof PointerEvent) aimFromPointer(event.clientX, event.clientY);
       },
       { signal: events.signal },
     );

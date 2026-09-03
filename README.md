@@ -1,49 +1,54 @@
 # PortalTrip frontend
 
 Browser app for an interdimensional travel desk. You pick a Rick and Morty location,
-choose up to three living companions, get a quote, and keep the booking on this
-machine. Starting a trip opens a journey log built from the same catalog.
+choose up to three living companions, get a quote, and buy the trip with the credits
+of your PortalTrip passport. Starting a trip opens a journey log built from the same
+catalog.
 
 This repository is the UI. The Java API is
-[`Prgm-code/portaltrip`](https://github.com/Prgm-code/portaltrip). The planner still
-loads catalog data from the public [Rick and Morty API](https://rickandmortyapi.com/).
-Reservations are stored in the browser, not on the Spring service.
+[`Prgm-code/portaltrip`](https://github.com/Prgm-code/portaltrip): it serves the
+catalog, issues the JWT passport, grants the welcome credits and owns every
+reservation. The browser keeps only the session.
 
 Live demo: [hito2-dl.vercel.app](https://hito2-dl.vercel.app)
 
 ## Architecture
 
 Astro prints the first HTML. After that, the session is vanilla TypeScript: DOM
-events, `fetch`, and a Zustand store. There is no React tree and no form library.
+events, `fetch`, and two Zustand stores. There is no React tree and no form library.
 Vite is the bundler Astro already ships.
 
 ```text
 Browser
 ├── Astro pages          file routes, first paint
-├── Astro components     static markup and slots
-├── Client scripts       events, rendering, WebGL
-├── Domain models        enums and interfaces
-├── Travel rules         quote + booking validation
-├── Zustand store        session state, persist reservations
-└── API client           fetch + timeout + typed errors
-        └── rickandmortyapi.com
+├── Astro components     static markup, passport dialog, slots
+├── Client scripts       events, rendering, session HUD, WebGL
+├── Domain models        enums, labels and API shapes
+├── Travel rules         instant quote + local validation
+├── Zustand stores       travelStore (catalog, draft, view) · sessionStore (JWT, balance)
+└── API client           fetch + timeout + envelope + bearer + typed errors
+        └── PortalTrip API (/api/v1)
 ```
 
 ```mermaid
 flowchart TD
-  pages["Astro pages<br>/ /viaje /404"] --> layout["Layout.astro<br>ClientRouter, CRT overlay, StarField"]
+  pages["Astro pages<br>/ /viaje /404"] --> layout["Layout.astro<br>ClientRouter, PassportDialog, toasts"]
   pages --> components["Astro components<br>Portal, BookingPanel, catalog, reservations"]
+  layout --> hud["session-hud.ts<br>account chip, dialog, expiry"]
   components --> scripts["Client TypeScript"]
   scripts --> planner["travel-planner/*"]
   scripts --> journey["journey.ts"]
   scripts --> portal["portal.ts Three.js"]
+  planner --> passport["passport.ts<br>register → 409 → login"]
+  hud --> passport
   planner --> store["travelStore"]
-  journey --> store
+  passport --> session["sessionStore"]
   planner --> rules["travelRules"]
-  planner --> api["rickAndMortyApi"]
+  planner --> api["portalTripApi"]
   journey --> api
-  store --> storage["localStorage['reservas']"]
-  api --> rm["rickandmortyapi.com"]
+  hud --> api
+  session --> storage["localStorage['portaltrip-session']"]
+  api --> pt["PortalTrip API"]
 ```
 
 ### Rendering split
@@ -51,17 +56,18 @@ flowchart TD
 | Layer | Lives in | Job |
 | :--- | :--- | :--- |
 | Routes | `src/pages/` | `/` planner, `/viaje` journey log, `/404` |
-| Shell | `src/layouts/Layout.astro` | document, View Transitions `ClientRouter`, starfield, CRT overlay, jump flash |
-| Markup | `src/components/` | header, booking form, catalog, reservations, portal canvas host |
-| Client boot | `src/scripts/app.ts`, `src/scripts/journey.ts` | start the planner or the log after each `astro:page-load` |
-| Planner | `src/scripts/travel-planner/` | form, catalog paging, quotes, reservation actions |
+| Shell | `src/layouts/Layout.astro` | document, View Transitions `ClientRouter`, starfield, CRT overlay, jump flash, passport dialog, toast region |
+| Markup | `src/components/` | header with account chip, booking form with passport step, catalog, reservations, portal canvas host |
+| Client boot | `src/scripts/app.ts`, `src/scripts/journey.ts`, `src/scripts/session-hud.ts` | start the planner or the log after each `astro:page-load`; the HUD runs on every page |
+| Passport | `src/scripts/passport.ts` | register with fallback to login, passport mode switching, field reading |
+| Planner | `src/scripts/travel-planner/` | form, local catalog search and paging, instant quotes, purchase with idempotency, reservation actions |
 | Scene | `src/scripts/portal.ts`, `src/scripts/starfield.ts` | slime portal (Three.js + custom shaders) and warp field (2D canvas) |
 | Transitions | `src/scripts/portal-jump.ts`, `src/styles/transitions.css` | origin of the jump, shared `journey-stage` name, CRT persist |
 | DOM factories | `src/ui/` | catalog cards, errors, journey view. Untrusted text goes through `textContent` |
-| Domain | `src/models/` | `TripType`, `RiskLevel`, `ReservationStatus`, `Reservation`, Rick and Morty types |
-| Rules | `src/utils/travelRules.ts` | quote breakdown and booking checks |
-| State | `src/stores/travelStore.ts` | Zustand vanilla store |
-| Network | `src/services/` | `fetch`, 8s timeout, `AbortController`, loading counter, `?apiError=` preview |
+| Domain | `src/models/` | `TripType`, `RiskLevel`, `ReservationStatus` (API codes plus Spanish labels), `Reservation`, catalog types, auth types |
+| Rules | `src/utils/travelRules.ts` | instant quote breakdown, booking and passport checks, credit formatting |
+| State | `src/stores/travelStore.ts`, `src/stores/sessionStore.ts` | catalog, draft and view in memory; JWT session and balance persisted |
+| Network | `src/services/portalTripApi.ts` | `fetch`, 8s timeout, `AbortController`, envelope unwrapping, bearer header, `Idempotency-Key`, `?apiError=` preview |
 
 Internal imports use path aliases from `tsconfig.json` (`models/*`, `services/*`,
 `stores/*`, and the rest). Relative `../../` climbs are not the convention here.
@@ -69,42 +75,59 @@ Internal imports use path aliases from `tsconfig.json` (`models/*`, `services/*`
 ### Data flow
 
 1. `Layout.astro` mounts the shell. `ClientRouter` keeps the CRT overlay and jump
-   flash across navigations (`transition:persist`).
+   flash across navigations (`transition:persist`). `session-hud.ts` hydrates the
+   session, paints the account chip and refreshes the balance with `GET /users/me`.
 2. On `/`, `scripts/app.ts` waits for `#booking-form`, then `initializeApp()`.
-   Listeners bind once. Catalog and living characters load in parallel with
-   `Promise.all`.
+   Listeners bind once. `GET /locations` and `GET /characters` load in parallel and
+   stay cached for the session; search and paging run in the browser.
 3. The form is the source of the draft. `readDraft()` uses `FormData`.
-   `validateReservation()` runs before `addReservation()`.
-4. Only `reservations` persist. The storage adapter writes a JSON array to
-   `localStorage["reservas"]`, not the default Zustand envelope.
-5. `startReservation()` moves `CONFIRMED → IN_PROGRESS` and navigates to `/viaje`.
-   `portal-jump.ts` records the click origin, flashes the viewport, and names the
-   reservation card `journey-stage` so View Transitions can morph it into the log.
-6. `/viaje` reads the in-progress booking from the store, then fetches location,
-   residents, and episodes for the log UI.
+   `validateReservation()` runs before anything reaches the network. The quote shown
+   while typing is computed locally with the same rules as the API.
+4. Without a session the form shows the passport step. Submitting calls
+   `POST /auth/register`; a `409` flips the step to login and calls
+   `POST /auth/login`. The response carries the JWT and the welcome credits.
+5. `POST /reservations` is sent with an `Idempotency-Key` bound to the exact request
+   body. Retries reuse the key, so the balance is never charged twice. The response
+   returns the reservation and `remainingBalance`.
+6. Only the session persists. `localStorage["portaltrip-session"]` stores the token,
+   its expiry and the profile. A `401` clears it and reopens the passport dialog.
+7. `startReservation()` navigates to `/viaje`. `portal-jump.ts` records the click
+   origin, flashes the viewport, and names the reservation card `journey-stage` so
+   View Transitions can morph it into the log.
+8. `/viaje` reads the reservation from `GET /reservations/{id}`, moves it to
+   `IN_PROGRESS` with `PATCH .../start`, and builds the log from the cached catalog
+   plus `GET /episodes`. Completing the trip calls `PATCH .../complete`.
 
 Reservation states match the API:
 
 ```text
 CONFIRMED → IN_PROGRESS → COMPLETED
-    │              │
-    └──────────────┴──→ CANCELLED
+    │
+    └──→ CANCELLED (refunds the total)
 ```
 
-`COMPLETED` and `CANCELLED` are terminal. The store ignores illegal transitions.
+`COMPLETED` and `CANCELLED` are terminal. The API rejects illegal transitions with
+`409`; cancelling is only offered for confirmed reservations.
 
 ### Why this shape
 
-The catalog is remote and flaky. The booking is local and must survive a refresh.
-Keeping `fetch` in `services/` and persistence in `travelStore` means the planner
-can retry a 429 without rewriting the form. Astro is here for pages, View
-Transitions, and the first HTML. The planner is still a DOM app on purpose: typed
-events, no virtual DOM, no extra runtime.
+The API is the system of record for money and reservations, so the browser never
+invents a booking. Keeping `fetch` in `services/` and the session in `sessionStore`
+means the planner can recover from an expired token without losing the draft. Astro
+is here for pages, View Transitions, and the first HTML. The planner is still a DOM
+app on purpose: typed events, no virtual DOM, no extra runtime.
 
 Quote math (base 1200, trip multipliers, station surcharge, insurance 190 per
-passenger, risk from resident count) lives in `travelRules.ts` so it can stay in
-sync with [`portaltrip`](https://github.com/Prgm-code/portaltrip). Wiring this UI
-to that API is future work. Until then the browser is the system of record.
+passenger, risk from resident count) lives in `travelRules.ts` so the price updates
+on every keystroke. It mirrors `QuoteCalculator` in
+[`portaltrip`](https://github.com/Prgm-code/portaltrip); the total actually charged
+is the one returned by the API.
+
+The passport asks for a password because the API requires one (8 to 64 characters).
+It is a single field with a show/hide toggle, asked once, in the same card as the
+trip. Reservations saved by the previous local-only version under
+`localStorage["reservas"]` cannot be imported (the API would charge them), so the
+reservations panel shows them once as a local archive that can be discarded.
 
 ## Stack
 
@@ -114,19 +137,26 @@ to that API is future work. Until then the browser is the system of record.
 - Tailwind CSS 4
 - Three.js for the portal disc
 - Biome for format and lint
-- [Rick and Morty API](https://rickandmortyapi.com/) for catalog reads
+- [PortalTrip API](https://github.com/Prgm-code/portaltrip) for catalog, passport, credits and reservations
 
 ## Getting started
 
-Requires Node.js 24 and pnpm 10.
+Requires Node.js 24, pnpm 10 and a running PortalTrip API.
 
 ```bash
+# API (from the portaltrip repository): set JWT_SECRET_BASE64 and add
+# http://localhost:4321 to APP_CORS_ALLOWED_ORIGINS in its .env, then
+docker compose up -d --build
+
+# UI
+cp .env.example .env      # PUBLIC_API_URL=http://localhost:8080
 pnpm install
 pnpm dev
 ```
 
 Open `http://localhost:4321`. npm scripts (`npm install`, `npm run dev`) work if
-you do not use pnpm.
+you do not use pnpm. The header pill pings `GET /health`, so a red uplink means the
+API is not reachable from the browser.
 
 ```bash
 pnpm check      # astro check && biome check
@@ -161,11 +191,12 @@ What we will merge:
 What we will not merge:
 
 - A second UI runtime (React, Vue, Svelte) for the planner
-- Persistence format changes without a migration plan for `localStorage["reservas"]`
+- Persistence format changes without a migration plan for `localStorage["portaltrip-session"]`
 - Secrets, personal catalog dumps, or generated `dist/` / `node_modules/`
 
 Rick and Morty names, characters, and imagery belong to their owners. This project
-is a fan-made client of the unofficial [Rick and Morty API](https://rickandmortyapi.com/).
+is a fan-made client; the catalog is a copy of the unofficial
+[Rick and Morty API](https://rickandmortyapi.com/) served by PortalTrip API.
 It is not affiliated with Adult Swim, Cartoon Network, or the API authors. Do not
 use this repo to ship trademarked branding as if it were official.
 

@@ -1,4 +1,4 @@
-import type { ApiErrorView } from 'services/rickAndMortyApiError';
+import type { ApiErrorView } from 'services/portalTripApiError';
 import { createElement } from 'ui/dom';
 
 /** Usa el estado HTTP como marca principal; evita símbolos ambiguos. */

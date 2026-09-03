@@ -1,5 +1,13 @@
-import { type Reservation, ReservationStatus, type RiskLevel } from 'models/reservation';
-import type { Character, Location } from 'models/rick-and-morty';
+import type { Character, Location } from 'models/catalog';
+import {
+  type Reservation,
+  ReservationStatus,
+  type RiskLevel,
+  riskClassNames,
+  riskLabels,
+  statusClassNames,
+  statusLabels,
+} from 'models/reservation';
 import { createElement, createImage, createSvg } from 'ui/dom';
 
 export type ToastKind = 'success' | 'neutral';
@@ -7,18 +15,23 @@ export type ToastKind = 'success' | 'neutral';
 const LOCATION_GLYPHS = ['◉', '◎', '◌', '◍'] as const;
 
 function riskClassName(risk: RiskLevel): string {
-  return `risk ${risk.toLowerCase()}`;
+  return `risk ${riskClassNames[risk]}`;
 }
 
 // Elementos del catálogo de destinos.
 function createRiskElement(risk: RiskLevel): HTMLSpanElement {
-  return createElement('span', { className: riskClassName(risk) }, createElement('i'), risk);
+  return createElement(
+    'span',
+    { className: riskClassName(risk) },
+    createElement('i'),
+    riskLabels[risk],
+  );
 }
 
 function createDestinationArtwork(location: Location, residents: Character[]): HTMLDivElement {
   const coordinate = createElement('span', {
     className: 'coordinate',
-    text: `${String(location.id).padStart(3, '0')} · RM`,
+    text: `${String(location.id).padStart(3, '0')} · PT`,
   });
 
   if (residents.length) {
@@ -119,7 +132,7 @@ export function createDestinationCard(
       createElement(
         'span',
         {},
-        createElement('b', { text: location.residents.length }),
+        createElement('b', { text: location.residentIds.length }),
         ' residentes',
       ),
       chooseButton,
@@ -159,7 +172,6 @@ export function createCompanionCard(character: Character, checked: boolean): HTM
 // Elementos de reservas y retroalimentación del formulario.
 export function createReservationItem(
   reservation: Reservation,
-  companions: Reservation['companions'],
   formattedDate: string,
   formattedTotal: string,
 ): HTMLElement {
@@ -178,8 +190,8 @@ export function createReservationItem(
     }),
   );
   const team = createElement('div', { className: 'reservation-team' });
-  if (companions.length) {
-    companions.forEach((character) => {
+  if (reservation.companions.length) {
+    reservation.companions.forEach((character) => {
       const image = createImage(character.image, character.name);
       image.title = character.name;
       team.append(image);
@@ -192,8 +204,8 @@ export function createReservationItem(
     'div',
     { className: 'reservation-side' },
     createElement('span', {
-      className: `status ${reservation.status.toLowerCase().replace(' ', '-')}`,
-      text: reservation.status,
+      className: `status ${statusClassNames[reservation.status]}`,
+      text: statusLabels[reservation.status],
     }),
     createElement('strong', { text: formattedTotal }),
   );
@@ -207,12 +219,17 @@ export function createReservationItem(
         text: `${reservation.status === ReservationStatus.IN_PROGRESS ? 'Continuar viaje' : 'Iniciar viaje'} →`,
         attrs: { href: `/viaje?id=${encodeURIComponent(reservation.id)}` },
       }),
-      createElement('button', {
-        text: 'Cancelar',
-        attrs: { type: 'button' },
-        dataset: { cancelReservation: reservation.id },
-      }),
     );
+    // Solo una reserva confirmada puede cancelarse y devolver sus créditos.
+    if (reservation.status === ReservationStatus.CONFIRMED) {
+      side.append(
+        createElement('button', {
+          text: 'Cancelar',
+          attrs: { type: 'button' },
+          dataset: { cancelReservation: reservation.id },
+        }),
+      );
+    }
   } else if (reservation.status === ReservationStatus.COMPLETED) {
     side.append(
       createElement('a', {
@@ -236,7 +253,7 @@ export function createToast(message: string, kind: ToastKind): HTMLDivElement {
 
 export function setRiskContent(target: HTMLElement, risk: RiskLevel): void {
   target.className = riskClassName(risk);
-  target.replaceChildren(createElement('i'), document.createTextNode(` ${risk}`));
+  target.replaceChildren(createElement('i'), document.createTextNode(` ${riskLabels[risk]}`));
 }
 
 export function appendDestinationHint(target: HTMLElement, location: Location): void {
@@ -248,7 +265,7 @@ export function appendDestinationHint(target: HTMLElement, location: Location): 
   );
   target.replaceChildren(
     route,
-    createElement('span', { text: `${location.residents.length} residentes` }),
+    createElement('span', { text: `${location.residentIds.length} residentes` }),
   );
 }
 

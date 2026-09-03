@@ -4,7 +4,7 @@ interface Props {
   label?: string;
 }
 
-const { class: className = '', label = 'Uplink C-137' } = Astro.props;
+const { class: className = '', label = 'Uplink Ciudadela' } = Astro.props;
 ---
 
 <span class:list={['uplink', className]} data-uplink="online" role="status">
@@ -13,18 +13,33 @@ const { class: className = '', label = 'Uplink C-137' } = Astro.props;
   <span data-uplink-state>· en línea</span>
 </span>
 <script>
-// El viajero salta a través de internet: el HUD refleja la señal real del navegador.
-function syncUplink(): void {
-  const online = navigator.onLine;
+import { checkHealth } from 'services/portalTripApi';
+
+// El HUD combina la señal del navegador con el healthcheck real de PortalTrip API.
+let apiOnline = true;
+
+function paintUplink(): void {
+  const browserOnline = navigator.onLine;
+  const online = browserOnline && apiOnline;
   document.querySelectorAll<HTMLElement>('[data-uplink]').forEach((node) => {
     node.dataset.uplink = online ? 'online' : 'offline';
     const state = node.querySelector('[data-uplink-state]');
-    if (state) state.textContent = online ? '· en línea' : '· sin señal';
+    if (state)
+      state.textContent = online
+        ? '· en línea'
+        : browserOnline
+          ? '· sin señal de la Ciudadela'
+          : '· sin conexión';
   });
 }
 
-window.addEventListener('online', syncUplink);
-window.addEventListener('offline', syncUplink);
-document.addEventListener('astro:page-load', syncUplink);
-syncUplink();
+async function probeUplink(): Promise<void> {
+  apiOnline = navigator.onLine ? await checkHealth() : false;
+  paintUplink();
+}
+
+window.addEventListener('online', () => void probeUplink());
+window.addEventListener('offline', paintUplink);
+document.addEventListener('astro:page-load', () => void probeUplink());
+void probeUplink();
 </script>

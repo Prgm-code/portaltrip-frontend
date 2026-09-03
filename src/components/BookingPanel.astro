@@ -9,7 +9,7 @@ import 'styles/booking-dynamic.css';
       <IconRoute size={22} stroke={1.7} />
     </div>
     <div>
-      <span class="section-kicker">Consola de salto · Paso 1 de 1</span>
+      <span class="section-kicker" data-booking-kicker>Consola de salto · Paso 1 de 2 · Ruta</span>
       <h2>Diseña tu viaje</h2>
     </div>
   </div>
@@ -17,32 +17,18 @@ import 'styles/booking-dynamic.css';
   <form id="booking-form" aria-describedby="booking-api-status" novalidate>
     <div id="booking-api-status" class="console-status" aria-live="assertive" hidden></div>
 
-    <div class="field-row">
-      <label class="field">
-        <span class="field-label">Nombre del pasajero</span>
-        <input
-          class="control"
-          id="passengerName"
-          name="passengerName"
-          type="text"
-          autocomplete="name"
-          placeholder="Ej: Morty Smith"
-          required
-        >
-      </label>
-      <label class="field">
-        <span class="field-label">Correo electrónico</span>
-        <input
-          class="control"
-          id="email"
-          name="email"
-          type="email"
-          autocomplete="email"
-          placeholder="morty@email.com"
-          required
-        >
-      </label>
-    </div>
+    <label class="field">
+      <span class="field-label">Nombre del pasajero</span>
+      <input
+        class="control"
+        id="passengerName"
+        name="passengerName"
+        type="text"
+        autocomplete="name"
+        placeholder="Ej: Morty Smith"
+        required
+      >
+    </label>
 
     <label class="field">
       <span class="field-label">Destino</span>
@@ -120,6 +106,71 @@ import 'styles/booking-dynamic.css';
       ></textarea>
     </label>
 
+    <!-- Paso 2: solo para visitantes sin sesión. Se crea la cuenta y se reserva en un clic. -->
+    <section
+      id="passport-step"
+      class="passport-step"
+      data-passport-scope
+      data-passport-mode="register"
+      aria-labelledby="passport-step-title"
+      hidden
+    >
+      <div class="passport-step-head">
+        <span class="section-kicker">Paso 2 de 2 · Pasaporte</span>
+        <h3 id="passport-step-title" data-passport-step-title>
+          Crea tu pasaporte y confirma el salto
+        </h3>
+        <p class="credit-badge" data-register-only>
+          <span aria-hidden="true">✦</span>
+          +5.000 créditos de bienvenida
+        </p>
+      </div>
+      <label class="field" data-register-only>
+        <span class="field-label">Nombre completo</span>
+        <input
+          class="control"
+          id="fullName"
+          name="fullName"
+          type="text"
+          autocomplete="name"
+          placeholder="Como aparecerá en tu pasaporte"
+        >
+      </label>
+      <label class="field">
+        <span class="field-label">Correo del pasaporte</span>
+        <input
+          class="control"
+          id="email"
+          name="email"
+          type="email"
+          autocomplete="email"
+          placeholder="morty@email.com"
+        >
+      </label>
+      <label class="field">
+        <span class="field-label">Clave <small>8 caracteres o más</small></span>
+        <span class="password-field">
+          <input
+            class="control"
+            id="password"
+            name="password"
+            type="password"
+            autocomplete="new-password"
+            minlength="8"
+            maxlength="64"
+          >
+          <button class="password-toggle" type="button" data-toggle-password aria-pressed="false">
+            Mostrar
+          </button>
+        </span>
+      </label>
+      <p class="passport-switch">
+        <button type="button" data-passport-switch data-passport-mode="login">
+          ¿Ya tienes pasaporte? Ingresa con tu clave
+        </button>
+      </p>
+    </section>
+
     <div id="form-errors" class="form-errors" role="alert" hidden></div>
 
     <div class="quote-grid">
@@ -131,14 +182,18 @@ import 'styles/booking-dynamic.css';
         <span>Costo del salto</span>
         <strong id="price-value">US$ 1.200</strong>
       </div>
+      <div class="quote-tile balance-tile" id="balance-tile" hidden>
+        <span>Saldo tras el salto</span>
+        <strong id="balance-value">US$ 0</strong>
+      </div>
     </div>
 
     <button class="btn btn-primary submit-btn" id="confirm-booking" type="submit">
-      <span>Confirmar reserva</span><span aria-hidden="true">→</span>
+      <span>Crear pasaporte y reservar</span><span aria-hidden="true">→</span>
     </button>
     <p class="submit-note">
       <IconShieldCheck size={13} stroke={1.9} aria-hidden="true" />
-      Tus datos se guardan únicamente en este dispositivo
+      <span>Tu pasaporte se crea en el mismo paso y recibe créditos de bienvenida</span>
     </p>
   </form>
 </aside>

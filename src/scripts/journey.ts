@@ -1,14 +1,26 @@
+import type { Character, Episode, Location } from 'models/catalog';
 import { type Reservation, ReservationStatus } from 'models/reservation';
-import type { Character, Episode, Location } from 'models/rick-and-morty';
-import { element } from 'scripts/travel-planner/helpers';
 import {
+  ensureCatalog,
+  episodesById,
   getCharactersByIds,
-  getEpisodesByIds,
-  getIdFromUrl,
+  locationsById,
+} from 'scripts/travel-planner/context';
+import { element } from 'scripts/travel-planner/helpers';
+import { showToast } from 'scripts/travel-planner/notifications';
+import {
+  completeReservation,
   getLocation,
-} from 'services/rickAndMortyApi';
-import { type ApiErrorView, getRickAndMortyErrorView } from 'services/rickAndMortyApiError';
-import { travelStore } from 'stores/travelStore';
+  getReservation,
+  startReservation,
+} from 'services/portalTripApi';
+import {
+  type ApiErrorView,
+  getApiErrorView,
+  isUnauthorizedError,
+} from 'services/portalTripApiError';
+import { isAuthenticated, sessionStore } from 'stores/sessionStore';
+import { createElement } from 'ui/dom';
 import {
   createCharacterModal,
   createEpisodeModal,
@@ -18,17 +30,8 @@ import {
 import { formatCredits } from 'utils/travelRules';
 
 const MAX_JOURNEY_RESIDENTS = 24;
-const MAX_JOURNEY_EPISODES = 40;
-
-function reservationCompanionIds(reservation: Reservation): number[] {
-  if (Array.isArray(reservation.companions))
-    return reservation.companions.map((character) => character.id);
-  return reservation.companion
-    ? [reservation.companion.id]
-    : reservation.companionId
-      ? [reservation.companionId]
-      : [];
-}
+let loaded = false;
+let loading = false;
 
 function formatDate(date: string): string {
   return new Intl.DateTimeFormat('es-CL', {
@@ -83,21 +86,18 @@ function bindDetailModals(content: HTMLElement, residents: Character[], episodes
   });
 }
 
+// Completar el viaje es una transición en la API: IN_PROGRESS → COMPLETED.
 function bindJourneyCompletion(content: HTMLElement): void {
   const button = content.querySelector<HTMLButtonElement>('[data-complete-journey]');
   if (!button || button.disabled) return;
 
-  button.addEventListener(
-    'click',
-    () => {
-      const reservationId = button.dataset.completeJourney ?? '';
-      travelStore.getState().completeReservation(reservationId);
-      const completed = travelStore
-        .getState()
-        .reservations.find((item) => item.id === reservationId);
-      if (completed?.status !== ReservationStatus.COMPLETED) return;
-
-      button.disabled = true;
+  button.addEventListener('click', async () => {
+    const reservationId = button.dataset.completeJourney ?? '';
+    button.disabled = true;
+    button.textContent = 'Cerrando portal...';
+    try {
+      const completed = await completeReservation(reservationId);
+      if (completed.status !== ReservationStatus.COMPLETED) throw new Error('Estado inesperado');
       button.textContent = 'Viaje completado ✓';
       content.querySelector<HTMLElement>('[data-journey-finale]')?.classList.add('completed');
       const kicker = content.querySelector<HTMLElement>('[data-finale-kicker]');
@@ -106,10 +106,15 @@ function bindJourneyCompletion(content: HTMLElement): void {
       if (kicker) kicker.textContent = 'EXPEDICIÓN COMPLETADA';
       if (title) title.textContent = 'Viaje completado con éxito.';
       if (copy)
-        copy.textContent = 'La expedición quedó registrada como completada en este dispositivo.';
-    },
-    { once: true },
-  );
+        copy.textContent = 'La expedición quedó registrada como completada en la Ciudadela.';
+      showToast(`Expedición ${completed.number} completada`);
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = 'Completar viaje ✓';
+      const view = getApiErrorView(error);
+      showToast(`${view.title}: ${view.message}`, 'neutral');
+    }
+  });
 }
 
 function renderJourney(
@@ -121,7 +126,7 @@ function renderJourney(
 ): void {
   const residentIds = new Set(residents.map((resident) => resident.id));
   const relatedEpisodes = episodes.filter((episode) =>
-    episode.characters.some((characterUrl) => residentIds.has(getIdFromUrl(characterUrl))),
+    episode.characterIds.some((characterId) => residentIds.has(characterId)),
   );
   const content = element<HTMLDivElement>('#journey-content');
   content.replaceChildren(
@@ -147,51 +152,56 @@ function renderJourney(
   bindJourneyCompletion(content);
 }
 
-function renderError(error: ApiErrorView | string): void {
-  const loading = element('#journey-loading');
-  loading.replaceChildren(createJourneyError(error));
-  const retry = loading.querySelector<HTMLButtonElement>('[data-retry-journey]');
+function renderError(error: ApiErrorView | string, action?: HTMLElement): void {
+  const loadingBox = element('#journey-loading');
+  loadingBox.hidden = false;
+  loadingBox.replaceChildren(createJourneyError(error, action));
+  const retry = loadingBox.querySelector<HTMLButtonElement>('[data-retry-journey]');
   if (!retry) return;
   retry.addEventListener('click', () => window.location.reload(), { once: true });
 }
 
+function renderLocked(): void {
+  renderError(
+    'Esta bitácora pertenece a un pasaporte. Ingresa para abrir el portal.',
+    createElement('button', {
+      className: 'btn btn-primary min-h-[40px] text-[12px]',
+      text: 'Ingresar con mi pasaporte',
+      attrs: { type: 'button' },
+      dataset: { openPassport: 'login' },
+    }),
+  );
+}
+
 async function initializeJourney(): Promise<void> {
+  if (loading || loaded) return;
   const reservationId = new URLSearchParams(window.location.search).get('id');
-  const reservation = travelStore.getState().reservations.find((item) => item.id === reservationId);
-  if (!reservation) return renderError('No encontramos esa reserva en este dispositivo.');
-  if (reservation.status === ReservationStatus.CANCELLED)
-    return renderError('Esta reserva está cancelada y no puede iniciar el viaje.');
+  if (!reservationId) return renderError('Falta el identificador de la reserva.');
+  if (!isAuthenticated()) return renderLocked();
 
-  travelStore.getState().startReservation(reservation.id);
-  const activeReservation =
-    travelStore.getState().reservations.find((item) => item.id === reservation.id) ?? reservation;
-
+  loading = true;
   try {
-    const destination = await getLocation({ id: activeReservation.destination.id });
-    const companionIds = reservationCompanionIds(activeReservation);
-    const residentIds = destination.residents.slice(0, MAX_JOURNEY_RESIDENTS).map(getIdFromUrl);
-    const people = await getCharactersByIds(
-      { ids: [...companionIds, ...residentIds] },
-      { trackLoading: false, reportError: false },
-    );
-    const characters = companionIds
-      .map((id) => people.find((person) => person.id === id))
-      .filter((person): person is Character => Boolean(person));
-    const residents = residentIds
-      .map((id) => people.find((person) => person.id === id))
-      .filter((person): person is Character => Boolean(person));
-    const episodeIds = [...characters, ...residents].flatMap((character) =>
-      character.episode.map(getIdFromUrl),
-    );
-    const episodes = (
-      await getEpisodesByIds(
-        { ids: episodeIds.slice(0, MAX_JOURNEY_EPISODES) },
-        { trackLoading: false, reportError: false },
-      )
-    ).sort((first, second) => first.id - second.id);
-    renderJourney(activeReservation, destination, characters, episodes, residents);
+    let reservation = await getReservation(reservationId);
+    if (reservation.status === ReservationStatus.CANCELLED)
+      return renderError('Esta reserva está cancelada y no puede iniciar el viaje.');
+    if (reservation.status === ReservationStatus.CONFIRMED) {
+      reservation = await startReservation(reservation.id);
+    }
+
+    await ensureCatalog({}, { episodes: true });
+    const destination =
+      locationsById.get(reservation.destination.id) ??
+      (await getLocation({ id: reservation.destination.id }));
+    const characters = getCharactersByIds(reservation.companions.map((companion) => companion.id));
+    const residents = getCharactersByIds(destination.residentIds.slice(0, MAX_JOURNEY_RESIDENTS));
+    const episodes = [...episodesById.values()].sort((first, second) => first.id - second.id);
+    renderJourney(reservation, destination, characters, episodes, residents);
+    loaded = true;
   } catch (error) {
-    renderError(getRickAndMortyErrorView(error));
+    if (isUnauthorizedError(error)) renderLocked();
+    else renderError(getApiErrorView(error));
+  } finally {
+    loading = false;
   }
 }
 
@@ -200,7 +210,14 @@ function boot(): void {
   const content = document.getElementById('journey-content');
   if (!content || content.dataset.booted) return;
   content.dataset.booted = 'true';
+  loaded = false;
   void initializeJourney();
+
+  // Si la persona ingresa desde el diálogo de pasaporte, la bitácora se abre sin recargar.
+  const unsubscribe = sessionStore.subscribe((state, previous) => {
+    if (state.session && !previous.session) void initializeJourney();
+  });
+  document.addEventListener('astro:before-swap', unsubscribe, { once: true });
 }
 
 boot();
