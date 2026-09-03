@@ -1,0 +1,113 @@
+---
+import { IconArrowRight, IconPlanet, IconShieldCheck, IconUsers } from '@tabler/icons-astro';
+import BookingPanel from 'components/BookingPanel.astro';
+import DestinationCatalog from 'components/DestinationCatalog.astro';
+import Header from 'components/Header.astro';
+import Portal from 'components/Portal.astro';
+import ReservationsPanel from 'components/ReservationsPanel.astro';
+import SiteFooter from 'components/SiteFooter.astro';
+import Layout from 'layouts/Layout.astro';
+import 'styles/home.css';
+---
+
+<Layout>
+  <Header />
+
+  <main class="shell">
+    <section class="hero" aria-label="Portal interdimensional">
+      <div class="hero-copy">
+        <span class="hud-label"
+          ><i aria-hidden="true"></i>
+          Agencia interdimensional certificada</span
+        >
+        <h1 id="hero-title">
+          Elige tu dimensión.<br>
+          <span class="hero-accent" data-text="Nosotros abrimos el portal."
+            >Nosotros abrimos el portal.</span
+          >
+        </h1>
+        <p class="hero-lead">
+          Explora planetas, estaciones y dimensiones fuera de este mundo. Tú eliges el destino;
+          nosotros calculamos el riesgo y estabilizamos la conexión.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#reserva">
+            Planear mi salto
+            <IconArrowRight size={16} stroke={2.2} aria-hidden="true" />
+          </a>
+          <a class="btn btn-ghost" href="#destinos">Explorar catálogo</a>
+        </div>
+        <ul class="hero-stats" aria-label="Protocolos de viaje">
+          <li><IconPlanet size={16} stroke={1.8} aria-hidden="true" /> Riesgo calculado en vivo</li>
+          <li>
+            <IconUsers size={16} stroke={1.8} aria-hidden="true" />
+            Hasta tres acompañantes vivos
+          </li>
+          <li>
+            <IconShieldCheck size={16} stroke={1.8} aria-hidden="true" />
+            Seguro interdimensional
+          </li>
+        </ul>
+      </div>
+
+      <div class="hero-visual">
+        <Portal size="clamp(260px, 34vw, 440px)" />
+        <section class="hero-readout glass" aria-label="Coordenadas del portal">
+          <span class="hud-label">Coordenadas</span>
+          <code>ORIGEN · TIERRA C-137</code>
+          <code class="dim">DESTINO · PENDIENTE</code>
+        </section>
+        <div class="credit-chip hero-credit">
+          <span>Misión avalada por</span>
+          <span class="logo-plate">
+            <img
+              src="https://desafiolatam.com/logo-real.png"
+              width="345"
+              height="142"
+              alt="Desafío Latam"
+              fetchpriority="high"
+            >
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <section class="workspace" aria-label="Planificador de viajes">
+      <BookingPanel />
+      <div class="catalog-column">
+        <div class="view-tabs" role="tablist" aria-label="Secciones">
+          <button
+            type="button"
+            class="view-tab active"
+            id="destinations-tab"
+            data-view="destinations"
+            role="tab"
+            aria-selected="true"
+          >
+            Explorar destinos
+          </button>
+          <button
+            type="button"
+            class="view-tab"
+            id="reservations-tab"
+            data-view="reservations"
+            role="tab"
+            aria-selected="false"
+          >
+            Mis reservas
+            <span id="reservation-count" class="tab-count">0</span>
+          </button>
+        </div>
+        <DestinationCatalog />
+        <ReservationsPanel />
+      </div>
+    </section>
+  </main>
+
+  <SiteFooter />
+
+  <div id="toast-region" class="toast-region" aria-live="polite"></div>
+  <script>
+  import 'scripts/app';
+  </script>
+</Layout>

@@ -1,0 +1,559 @@
+/* Capas ambientales y coreografía de los saltos entre dimensiones. */
+
+/* Nebulosa fija bajo todo el contenido. */
+.void-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 60% 45% at 78% 12%, rgba(169, 245, 44, 0.13), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 8% 88%, rgba(121, 216, 230, 0.1), transparent 70%),
+    radial-gradient(ellipse 40% 30% at 55% 105%, rgba(255, 172, 66, 0.06), transparent 70%),
+    var(--night);
+  pointer-events: none;
+}
+
+.void-layer::before {
+  content: "";
+  position: absolute;
+  top: -32vmin;
+  right: -26vmin;
+  width: 92vmin;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 18%,
+    rgba(169, 245, 44, 0.22) 30%,
+    transparent 42%,
+    rgba(121, 216, 230, 0.14) 66%,
+    transparent 78%
+  );
+  filter: blur(26px);
+  mask: radial-gradient(circle, transparent 45%, black 52%, black 61%, transparent 71%);
+  animation: void-spin 70s linear infinite;
+}
+
+.void-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(ellipse at 50% 0%, black, transparent 78%);
+}
+
+/* Canvas de estrellas; persiste entre páginas gracias a transition:persist. */
+.starfield {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Capa CRT: scanlines, viñeta y parpadeo de monitor viejo sobre toda la consola. */
+.crt-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.crt-layer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 0.035) 0 1px,
+    transparent 1px 3px
+  );
+  mix-blend-mode: overlay;
+  animation: crt-flicker 4.2s steps(12) infinite;
+}
+
+.crt-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 45%, transparent 62%, rgb(1 4 2 / 0.55) 100%),
+    linear-gradient(
+      to bottom,
+      rgb(151 247 93 / 0.04),
+      transparent 12%,
+      transparent 88%,
+      rgb(77 232 244 / 0.03)
+    );
+}
+
+/* Línea de barrido que recorre la pantalla como una señal de uplink. */
+.crt-layer .scanline {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 120px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgb(151 247 93 / 0.05) 45%,
+    rgb(151 247 93 / 0.09) 50%,
+    rgb(151 247 93 / 0.05) 55%,
+    transparent
+  );
+  animation: scanline-sweep 9s linear infinite;
+}
+
+/* Destello del portal que sale del punto donde se abre el salto. */
+.jump-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  opacity: 0;
+  background: radial-gradient(
+    circle at var(--portal-x) var(--portal-y),
+    rgba(223, 255, 178, 0.95),
+    rgba(151, 247, 93, 0.6) 16%,
+    rgba(77, 232, 244, 0.2) 36%,
+    transparent 62%
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.jump-flash.active {
+  animation: jump-flash 0.85s ease-out both;
+}
+
+/* Anillo del portal que se expande desde el punto de apertura. */
+.jump-flash::before,
+.jump-flash::after {
+  content: "";
+  position: absolute;
+  left: var(--portal-x);
+  top: var(--portal-y);
+  width: 40px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  translate: -50% -50%;
+  opacity: 0;
+}
+
+.jump-flash::before {
+  border: 3px solid rgb(223 255 178 / 0.9);
+  box-shadow:
+    0 0 32px rgb(151 247 93 / 0.8),
+    inset 0 0 24px rgb(151 247 93 / 0.6);
+}
+
+.jump-flash::after {
+  border: 2px dashed rgb(77 232 244 / 0.7);
+  box-shadow: 0 0 24px rgb(77 232 244 / 0.5);
+}
+
+.jump-flash.active::before {
+  animation: portal-ring 0.85s var(--ease-portal) both;
+}
+
+.jump-flash.active::after {
+  animation: portal-ring 0.85s 0.08s var(--ease-portal) both;
+}
+
+/* Salto entre páginas: la vista actual es absorbida por el portal y la nueva se abre desde él. */
+::view-transition-group(root) {
+  animation-duration: 0.68s;
+}
+
+::view-transition-old(root) {
+  transform-origin: var(--portal-x) var(--portal-y);
+  animation: jump-out 0.45s cubic-bezier(0.55, 0, 0.6, 0.2) both;
+}
+
+::view-transition-new(root) {
+  animation: jump-in 0.68s var(--ease-portal) both;
+}
+
+/* Elementos compartidos entre páginas. */
+::view-transition-group(portal-logo),
+::view-transition-group(hud-header) {
+  animation-duration: 0.55s;
+  animation-timing-function: var(--ease-out);
+}
+
+::view-transition-group(journey-stage) {
+  z-index: 2;
+  animation-duration: 0.68s;
+  animation-timing-function: var(--ease-portal);
+}
+
+::view-transition-old(journey-stage) {
+  transform-origin: var(--portal-x) var(--portal-y);
+  animation: stage-absorb 0.4s cubic-bezier(0.55, 0, 0.6, 0.2) both;
+}
+
+::view-transition-new(journey-stage) {
+  animation: stage-emerge 0.55s 0.1s var(--ease-portal) both;
+}
+
+/* Cambio de panel dentro de la misma página (destinos ↔ reservas). */
+::view-transition-old(panel-destinations),
+::view-transition-old(panel-reservations) {
+  animation: panel-out 0.22s ease both;
+}
+
+::view-transition-new(panel-destinations),
+::view-transition-new(panel-reservations) {
+  animation: panel-in 0.42s var(--ease-out) both;
+}
+
+/* Entrada escalonada de tarjetas generadas por TypeScript. */
+.destination-grid > *,
+.reservations-list > *,
+.story-grid > *,
+.related-residents-grid > *,
+.related-episodes-grid > * {
+  animation: rise-in 0.5s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(1) {
+  --i: 0;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(2) {
+  --i: 1;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(3) {
+  --i: 2;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(4) {
+  --i: 3;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(5) {
+  --i: 4;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(6) {
+  --i: 5;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(7) {
+  --i: 6;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(8) {
+  --i: 7;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(9) {
+  --i: 8;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(10) {
+  --i: 9;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(11) {
+  --i: 10;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(12) {
+  --i: 11;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(13) {
+  --i: 12;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(14) {
+  --i: 13;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(15) {
+  --i: 14;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(16) {
+  --i: 15;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(17) {
+  --i: 16;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(18) {
+  --i: 17;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(19) {
+  --i: 18;
+}
+:is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > :nth-child(20) {
+  --i: 19;
+}
+
+@keyframes void-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes crt-flicker {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  8% {
+    opacity: 0.65;
+  }
+  9% {
+    opacity: 0.9;
+  }
+  42% {
+    opacity: 0.75;
+  }
+  43% {
+    opacity: 0.95;
+  }
+  71% {
+    opacity: 0.7;
+  }
+  72% {
+    opacity: 0.88;
+  }
+}
+
+@keyframes scanline-sweep {
+  from {
+    transform: translateY(-140px);
+  }
+  to {
+    transform: translateY(110vh);
+  }
+}
+
+@keyframes jump-flash {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes portal-ring {
+  0% {
+    opacity: 0;
+    scale: 0.2;
+    rotate: 0deg;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 34;
+    rotate: 140deg;
+  }
+}
+
+@keyframes jump-out {
+  to {
+    opacity: 0;
+    transform: scale(0.82) rotate(-1.5deg);
+    filter: blur(16px) saturate(2.4) hue-rotate(35deg) brightness(1.5);
+  }
+}
+
+@keyframes jump-in {
+  from {
+    clip-path: circle(0% at var(--portal-x) var(--portal-y));
+    filter: brightness(2.4) saturate(1.9) blur(6px);
+  }
+  55% {
+    filter: brightness(1.12) saturate(1.2) blur(0);
+  }
+  to {
+    clip-path: circle(165% at var(--portal-x) var(--portal-y));
+    filter: none;
+  }
+}
+
+/* La tarjeta de reserva es absorbida por el portal al iniciar el viaje. */
+@keyframes stage-absorb {
+  to {
+    opacity: 0;
+    transform: scale(0.35) rotate(6deg);
+    filter: blur(10px) saturate(2.6) hue-rotate(60deg) brightness(1.8);
+  }
+}
+
+/* El escenario del viaje emerge del portal con un destello verde. */
+@keyframes stage-emerge {
+  from {
+    opacity: 0;
+    transform: scale(1.12);
+    filter: blur(12px) brightness(2.2) saturate(1.8);
+  }
+  60% {
+    filter: blur(0) brightness(1.1);
+  }
+}
+
+@keyframes panel-out {
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.99);
+    filter: blur(4px);
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.995);
+    filter: blur(6px) brightness(1.4);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+    filter: blur(4px);
+  }
+}

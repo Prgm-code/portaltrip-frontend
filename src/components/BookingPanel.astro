@@ -1,0 +1,144 @@
+---
+import { IconRoute, IconShieldCheck } from '@tabler/icons-astro';
+import 'styles/booking-dynamic.css';
+---
+
+<aside class="booking-card glass" id="reserva">
+  <div class="booking-heading">
+    <div class="booking-icon" aria-hidden="true">
+      <IconRoute size={22} stroke={1.7} />
+    </div>
+    <div>
+      <span class="section-kicker">Consola de salto · Paso 1 de 1</span>
+      <h2>Diseña tu viaje</h2>
+    </div>
+  </div>
+
+  <form id="booking-form" aria-describedby="booking-api-status" novalidate>
+    <div id="booking-api-status" class="console-status" aria-live="assertive" hidden></div>
+
+    <div class="field-row">
+      <label class="field">
+        <span class="field-label">Nombre del pasajero</span>
+        <input
+          class="control"
+          id="passengerName"
+          name="passengerName"
+          type="text"
+          autocomplete="name"
+          placeholder="Ej: Morty Smith"
+          required
+        >
+      </label>
+      <label class="field">
+        <span class="field-label">Correo electrónico</span>
+        <input
+          class="control"
+          id="email"
+          name="email"
+          type="email"
+          autocomplete="email"
+          placeholder="morty@email.com"
+          required
+        >
+      </label>
+    </div>
+
+    <label class="field">
+      <span class="field-label">Destino</span>
+      <select class="control" id="destinationId" name="destinationId" required>
+        <option value="">Selecciona un destino</option>
+      </select>
+    </label>
+
+    <div id="destination-hint" class="destination-hint" hidden></div>
+
+    <div class="field-row">
+      <label class="field">
+        <span class="field-label">Fecha del viaje</span>
+        <input class="control" id="travelDate" name="travelDate" type="date" required>
+      </label>
+      <label class="field">
+        <span class="field-label">Pasajeros</span>
+        <span class="stepper">
+          <button type="button" data-step="-1" aria-label="Restar pasajero">−</button>
+          <input id="passengers" name="passengers" type="number" min="1" max="8" value="1" readonly>
+          <button type="button" data-step="1" aria-label="Sumar pasajero">+</button>
+        </span>
+      </label>
+    </div>
+
+    <fieldset class="fieldset">
+      <legend>
+        <span>Elige tu equipo <small class="legend-note">Solo personajes vivos</small></span>
+        <b id="companion-status">0 / 3</b>
+      </legend>
+      <div id="companion-grid" class="companion-grid" aria-live="polite">
+        <p>Selecciona un destino para descubrir acompañantes.</p>
+      </div>
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend><span>Tipo de viaje</span></legend>
+      <div class="choice-grid">
+        <label class="choice">
+          <input type="radio" name="tripType" value="express" checked>
+          <span><b>Express</b><small>Ida directa</small></span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="tripType" value="exploration">
+          <span><b>Exploración</b><small>+30% · flexible</small></span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="tripType" value="premium">
+          <span><b>Premium</b><small>+65% · VIP</small></span>
+        </label>
+      </div>
+    </fieldset>
+
+    <label class="toggle-row">
+      <span class="toggle">
+        <input id="insurance" name="insurance" type="checkbox">
+        <i class="toggle-track" aria-hidden="true"></i>
+      </span>
+      <span class="toggle-copy">
+        <b>Seguro interdimensional</b>
+        <small id="insurance-copy">Cobertura ante portales inestables</small>
+      </span>
+      <strong class="toggle-price">+ $190 p/p</strong>
+    </label>
+
+    <label class="field">
+      <span class="field-label">Comentarios <small>Opcional</small></span>
+      <textarea
+        class="control"
+        id="comments"
+        name="comments"
+        rows="2"
+        maxlength="240"
+        placeholder="¿Alguna petición especial?"
+      ></textarea>
+    </label>
+
+    <div id="form-errors" class="form-errors" role="alert" hidden></div>
+
+    <div class="quote-grid">
+      <div class="quote-tile">
+        <span>Riesgo estimado</span>
+        <strong id="risk-value" class="risk alto"><i></i> Alto</strong>
+      </div>
+      <div class="quote-tile">
+        <span>Costo del salto</span>
+        <strong id="price-value">US$ 1.200</strong>
+      </div>
+    </div>
+
+    <button class="btn btn-primary submit-btn" id="confirm-booking" type="submit">
+      <span>Confirmar reserva</span><span aria-hidden="true">→</span>
+    </button>
+    <p class="submit-note">
+      <IconShieldCheck size={13} stroke={1.9} aria-hidden="true" />
+      Tus datos se guardan únicamente en este dispositivo
+    </p>
+  </form>
+</aside>

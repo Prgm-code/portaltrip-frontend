@@ -1,0 +1,30 @@
+---
+interface Props {
+  class?: string;
+  label?: string;
+}
+
+const { class: className = '', label = 'Uplink C-137' } = Astro.props;
+---
+
+<span class:list={['uplink', className]} data-uplink="online" role="status">
+  <i aria-hidden="true"></i>
+  <span>{label}</span>
+  <span data-uplink-state>· en línea</span>
+</span>
+<script>
+// El viajero salta a través de internet: el HUD refleja la señal real del navegador.
+function syncUplink(): void {
+  const online = navigator.onLine;
+  document.querySelectorAll<HTMLElement>('[data-uplink]').forEach((node) => {
+    node.dataset.uplink = online ? 'online' : 'offline';
+    const state = node.querySelector('[data-uplink-state]');
+    if (state) state.textContent = online ? '· en línea' : '· sin señal';
+  });
+}
+
+window.addEventListener('online', syncUplink);
+window.addEventListener('offline', syncUplink);
+document.addEventListener('astro:page-load', syncUplink);
+syncUplink();
+</script>

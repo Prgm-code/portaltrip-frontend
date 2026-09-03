@@ -1,0 +1,41 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import StarField from 'components/StarField.astro';
+import 'styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title = 'Portal Trip — Viajes interdimensionales' } = Astro.props;
+const description =
+  Astro.props.description ?? 'Reserva viajes seguros por todo el multiverso de Rick and Morty.';
+---
+
+<!doctype html>
+<html class="scroll-smooth" lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" href="/favicon.ico">
+    <meta name="generator" content={Astro.generator}>
+    <meta name="description" content={description}>
+    <meta name="theme-color" content="#040a07">
+    <title>{title}</title>
+    <ClientRouter />
+  </head>
+  <body class="min-h-screen min-w-80 overflow-x-hidden">
+    <div class="void-layer" aria-hidden="true"></div>
+    <StarField />
+    <div class="crt-layer" aria-hidden="true" transition:persist="crt-layer">
+      <span class="scanline"></span>
+    </div>
+    <div class="jump-flash" aria-hidden="true" transition:persist="jump-flash"></div>
+    <slot />
+    <script>
+    import 'scripts/portal-jump';
+    </script>
+  </body>
+</html>

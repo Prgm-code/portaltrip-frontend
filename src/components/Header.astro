@@ -1,0 +1,47 @@
+---
+import { IconArrowLeft, IconArrowRight } from '@tabler/icons-astro';
+import PortalLogo from 'components/PortalLogo.astro';
+import UplinkStatus from 'components/UplinkStatus.astro';
+
+interface Props {
+  mode?: 'home' | 'journey' | 'lost';
+}
+
+const { mode = 'home' } = Astro.props;
+---
+
+<div class="hud-bar">
+  <header class="hud-header">
+    <PortalLogo shared />
+    {mode === 'home' ? (
+        <nav class="hud-nav" aria-label="Navegación principal">
+          <a class="nav-link active" href="#destinos">
+            Destinos
+          </a>
+          <button class="nav-link" id="header-reservations" type="button">
+            Mis reservas
+          </button>
+        </nav>
+      ) : (
+        <span class:list={['hud-label', 'hud-center', mode === 'lost' && 'warn']}>
+          <i aria-hidden="true" />
+          {mode === 'journey' ? 'Señal del portal activa' : 'Portal inestable'}
+        </span>
+      )}
+    <div class="hud-right">
+      <UplinkStatus class="hud-uplink" />
+      {mode === 'home' && (
+          <a href="#reserva" class="btn btn-primary hud-cta">
+            Abrir portal
+            <IconArrowRight size={16} stroke={2.2} aria-hidden="true" />
+          </a>
+        )}
+      {mode === 'journey' && (
+          <a href="/" class="btn btn-ghost hud-cta">
+            <IconArrowLeft size={16} stroke={2.2} aria-hidden="true" />
+            Volver a mis reservas
+          </a>
+        )}
+    </div>
+  </header>
+</div>

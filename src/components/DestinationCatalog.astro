@@ -1,0 +1,55 @@
+---
+import { IconSearch } from '@tabler/icons-astro';
+import 'styles/catalog.css';
+---
+
+<section
+  id="destinos"
+  class="view-panel glass"
+  data-panel="destinations"
+  role="tabpanel"
+  aria-labelledby="destinations-tab"
+>
+  <div class="catalog-heading">
+    <div>
+      <span class="section-kicker">Catálogo multiversal</span>
+      <h2 class="section-title">Elige tu próximo destino</h2>
+    </div>
+    <p class="live-note"><i aria-hidden="true"></i> Información obtenida en tiempo real</p>
+  </div>
+
+  <div class="catalog-tools">
+    <label class="search-box">
+      <IconSearch size={17} stroke={1.9} aria-hidden="true" />
+      <span class="sr-only">Buscar destino</span>
+      <input
+        class="control"
+        id="location-search"
+        type="search"
+        placeholder="Buscar planeta, dimensión..."
+      >
+    </label>
+    <label class="filter-box">
+      <span class="sr-only">Filtrar por tipo</span>
+      <select class="control" id="type-filter">
+        <option value="all">Todos los tipos</option>
+        <option value="Planet">Planetas</option>
+        <option value="Space station">Estaciones</option>
+        <option value="Dimension">Dimensiones</option>
+        <option value="Microverse">Microversos</option>
+        <option value="TV">TV</option>
+      </select>
+    </label>
+  </div>
+
+  <div id="catalog-status" class="catalog-status" aria-live="polite"></div>
+  <div id="destination-grid" class="destination-grid"></div>
+
+  <nav class="pagination" aria-label="Paginación de destinos">
+    <button class="page-btn" id="previous-page" type="button" aria-label="Página anterior">
+      ←
+    </button>
+    <span id="page-status">Página 1 de 1</span>
+    <button class="page-btn" id="next-page" type="button" aria-label="Página siguiente">→</button>
+  </nav>
+</section>

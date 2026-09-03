@@ -1,0 +1,97 @@
+/* Tokens del terminal de salto interdimensional. */
+:root {
+  color-scheme: dark;
+  /* Fondos de la consola: noche profunda con tinte verde. */
+  --night-0: #02060a;
+  --night-1: #04100b;
+  --night-2: #0a1f14;
+  /* Acentos del portal. */
+  --portal-green: #97f75d;
+  --portal-deep: #1f8a3b;
+  --cyan: #4de8f4;
+  --magenta: #ff5da2;
+  --orange: #ffb347;
+  --red: #f06d56;
+  /* Texto. */
+  --ink: #e8f5e9;
+  --ink-dim: #9fb8a6;
+  /* Alias heredados que consumen otras hojas de estilo (no eliminar). */
+  --night: var(--night-0);
+  --paper: var(--night-1);
+  --muted: var(--ink-dim);
+  --dim: #5d7466;
+  --green: var(--portal-green);
+  --green-dark: #6fd43c;
+  --green-glow: rgb(151 247 93 / 0.45);
+  --mint: #dfffb2;
+  /* Bordes y cristal del HUD. */
+  --line: rgb(151 247 93 / 0.18);
+  --line-soft: rgb(232 245 233 / 0.09);
+  --surface: rgb(10 31 20 / 0.55);
+  --surface-2: rgb(151 247 93 / 0.05);
+  --surface-3: rgb(151 247 93 / 0.09);
+  --white: #ffffff;
+  --radius: 18px;
+  --shadow: 0 30px 90px rgb(0 0 0 / 0.55);
+  --glow-portal: 0 0 24px rgb(151 247 93 / 0.25);
+  --font-display: "Space Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Rebote suave para la apertura del portal. */
+  --ease-portal: cubic-bezier(0.22, 1.25, 0.36, 1);
+  /* Punto de apertura del portal en el siguiente salto (lo fija portal-jump.ts). */
+  --portal-x: 50%;
+  --portal-y: 50%;
+  font-family: var(--font-display);
+  font-synthesis: none;
+  scrollbar-color: #2f4a38 transparent;
+}
+
+html {
+  background: var(--night-0);
+}
+
+body {
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  color: var(--night-0);
+  background: var(--portal-green);
+}
+
+:focus-visible {
+  outline: 2px solid var(--portal-green);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+code {
+  font-family: var(--font-mono);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: Reduced-motion overrides must win the cascade. */
+    scroll-behavior: auto !important;
+    /* biome-ignore lint/complexity/noImportantStyles: Reduced-motion overrides must win the cascade. */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: Reduced-motion overrides must win the cascade. */
+    animation-iteration-count: 1 !important;
+  }
+}
