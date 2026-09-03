@@ -1,0 +1,12 @@
+.git
+.github
+.vscode
+.astro
+node_modules
+dist
+.env
+.env.*
+docs
+db
+scripts
+*.md

@@ -10,7 +10,129 @@ This repository is the UI. The Java API is
 catalog, issues the JWT passport, grants the welcome credits and owns every
 reservation. The browser keeps only the session.
 
-Live demo: [hito2-dl.vercel.app](https://hito2-dl.vercel.app)
+## 🔌 Backend de este frontend
+
+**Este frontend trabaja con el backend PortalTrip API.** Repositorio en GitHub:
+**https://github.com/Prgm-code/portaltrip**
+
+La UI consume esa API en `http://localhost:8080` sin configurar nada; basta con
+tener ambos repositorios descargados y seguir la guía de puesta en marcha de más
+abajo. Para otra URL define `PUBLIC_API_URL` (ver `.env.example`).
+
+---
+
+# 🎫 Enterprise Booking System - Full-Stack Integration
+
+> **Desafío Final · Curso Java · Globant Talento Ready · Desafío Latam.**
+> PortalTrip es el Proyecto Integrador full-stack del curso: API REST en Java/Spring Boot con PostgreSQL y frontend en TypeScript/Astro, entregados como dos repositorios que se conectan sin configuración adicional en local.
+
+Este repositorio es el **frontend** del Proyecto Integrador PortalTrip. El backend vive en [Prgm-code/portaltrip](https://github.com/Prgm-code/portaltrip).
+
+## 🛠️ Stack Tecnológico
+
+* **Backend:** Java 26, Spring Boot 4.1.1, Spring Data JPA, Hibernate 7.4, Spring Security 7.1 (JWT HS256), OpenAPI/Swagger (springdoc 3.1.0).
+* **Frontend:** TypeScript 6 estricto (cero `any`, Biome `noExplicitAny: error`), Astro 7.1 sobre Vite 8, Native ESM, HTML5/CSS3 semántico, Zustand 5, Tailwind CSS 4, Three.js.
+* **Infraestructura:** Docker Compose, PostgreSQL 17 Alpine, Dockerfile multi-etapa (Node 24 + nginx).
+* **Calidad y Testing:** JUnit 6, Mockito 5, JaCoCo (100% instrucciones y ramas), TDD & Clean Architecture en la API; `astro check` + Biome 2 en la UI.
+
+### Versiones exactas
+
+| Capa | Tecnología | Versión |
+| :--- | :--- | :--- |
+| Backend | Java (Temurin) | 26 |
+| Backend | Spring Boot | 4.1.1 |
+| Backend | Spring Security (JWT HS256, OAuth2 Resource Server) | 7.1.1 |
+| Backend | Spring Data JPA + Hibernate ORM | 7.4.5 |
+| Backend | springdoc-openapi (Swagger UI) | 3.1.0 |
+| Backend | Maven Wrapper | 3.9.16 |
+| Backend | JUnit Jupiter / Mockito / JaCoCo | 6.0.3 / 5.23.0 / 0.8.15 |
+| Base de datos | PostgreSQL (Docker `postgres:17-alpine`) | 17 |
+| Frontend | Node.js / pnpm | 24 / 10.34.5 |
+| Frontend | Astro (sobre Vite 8.2) | 7.1.6 |
+| Frontend | TypeScript (`astro/tsconfigs/strict`, cero `any`) | 6.0.3 |
+| Frontend | Tailwind CSS | 4.3.3 |
+| Frontend | Zustand | 5.0.14 |
+| Frontend | Three.js | 0.185.1 |
+| Frontend | Biome (lint + format) | 2.5.7 |
+| Infraestructura | Docker Compose (`compose.yml`) + Dockerfiles multi-etapa | Compose v2 |
+
+---
+
+## 🔗 Repositorios de Referencia
+
+* Core de Dominio / Hito 1: https://github.com/sebavidal10/neonpulse-ticketera
+* Backend Spring Boot / Hito 4: https://github.com/sebavidal10/neonpulse-api-springboot
+* Frontend Vite + TS / Hito 2: https://github.com/sebavidal10/neonpulse-frontend
+
+---
+
+## 🚀 Guía de Puesta en Marcha Local
+
+No hace falta crear ningún `.env`: la UI apunta a `http://localhost:8080` por defecto y la API trae en su perfil `dev` la base de datos, la clave JWT y CORS (`http://localhost:4321`) ya configurados. Requiere Node.js 24, Java 26 y Docker.
+
+### 1. Levantar la Base de Datos Relacional
+
+```bash
+cd portaltrip
+docker compose up -d postgres
+```
+
+PostgreSQL queda activo en `localhost:5432` con el catálogo y el esquema de reservas cargados.
+
+### 2. Ejecutar Pruebas Automatizadas
+
+```bash
+./mvnw clean test
+```
+
+### 3. Iniciar el Microservicio Backend
+
+```bash
+./mvnw spring-boot:run
+```
+
+* API REST: http://localhost:8080/api/v1/reservations
+* Swagger UI (Perfil Dev): http://localhost:8080/swagger-ui.html
+
+### 4. Iniciar la Interfaz Web Frontend
+
+```bash
+cd ../portaltrip-frontend
+pnpm install
+pnpm dev
+```
+
+Requiere Node.js 24 y pnpm 10 (`npm install -g pnpm`). Si prefieres npm, `npm install` y `npm run dev` también funcionan.
+
+* App Web: http://localhost:4321
+
+Con los dos repositorios descargados uno junto al otro no hay que crear ningún
+`.env` ni tocar configuración: la UI apunta a `http://localhost:8080` y la API
+acepta el origen `http://localhost:4321` por defecto.
+
+Ciclo completo: crea tu pasaporte desde el botón de la cabecera (registro con email y contraseña), elige un destino, pide la cotización y confirma la reserva. La API la guarda en PostgreSQL y la lista de reservas se refresca en la UI sin recargar la página. `pnpm build` ejecuta `astro check`, Biome y la compilación sin errores.
+
+---
+
+## ☁️ Despliegue en Coolify (o cualquier host Docker)
+
+El repositorio incluye un `Dockerfile` multi-etapa (build con Node 24 y pnpm,
+servido por nginx en el puerto 80) y `nginx.conf`.
+
+1. En Coolify crea una aplicación desde este repositorio con **Build Pack: Dockerfile**.
+2. Añade la variable `PUBLIC_API_URL=https://<dominio-de-tu-api>` y márcala como
+   **Build Variable**: Astro incrusta la URL en el bundle durante `pnpm build`.
+3. Puerto expuesto: `80`. Asigna el dominio del frontend.
+4. En la API añade ese dominio a `APP_CORS_ALLOWED_ORIGINS` (ver README del backend).
+
+Prueba local de la imagen:
+
+```bash
+docker build --build-arg PUBLIC_API_URL=http://localhost:8080 -t portaltrip-frontend .
+docker run --rm -p 4321:80 portaltrip-frontend
+```
+
+---
 
 ## Architecture
 
@@ -150,12 +272,12 @@ reservations panel shows them once as a local archive that can be discarded.
 Requires Node.js 24, pnpm 10 and a running PortalTrip API.
 
 ```bash
-# API (from the portaltrip repository): set JWT_SECRET_BASE64 and add
-# http://localhost:4321 to APP_CORS_ALLOWED_ORIGINS in its .env, then
+# API (from the portaltrip repository). Its dev profile already ships the
+# database, JWT and CORS defaults for http://localhost:4321.
 docker compose up -d --build
 
-# UI
-cp .env.example .env      # PUBLIC_API_URL=http://localhost:8080
+# UI (.env is optional; PUBLIC_API_URL defaults to http://localhost:8080)
+cp .env.example .env
 pnpm install
 pnpm dev
 ```
