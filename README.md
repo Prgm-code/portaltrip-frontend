@@ -79,7 +79,10 @@ Internal imports use path aliases from `tsconfig.json` (`models/*`, `services/*`
    session, paints the account chip and refreshes the balance with `GET /users/me`.
 2. On `/`, `scripts/app.ts` waits for `#booking-form`, then `initializeApp()`.
    Listeners bind once. `GET /locations` and `GET /characters` load in parallel and
-   stay cached for the session; search and paging run in the browser.
+   stay cached for the session; search and paging run in the browser. The page reads
+   like an airline desk: hero with the welcome-credit invite, a search deck (origin,
+   destination, date, passengers), featured routes with starting fares, then the
+   results column next to the checkout console.
 3. The form is the source of the draft. `readDraft()` uses `FormData`.
    `validateReservation()` runs before anything reaches the network. The quote shown
    while typing is computed locally with the same rules as the API.
@@ -92,8 +95,11 @@ Internal imports use path aliases from `tsconfig.json` (`models/*`, `services/*`
 6. Only the session persists. `localStorage["portaltrip-session"]` stores the token,
    its expiry and the profile. A `401` clears it and reopens the passport dialog.
 7. `startReservation()` navigates to `/viaje`. `portal-jump.ts` records the click
-   origin, flashes the viewport, and names the reservation card `journey-stage` so
-   View Transitions can morph it into the log.
+   origin, adds `html.jumping` so cards and panels vanish toward the portal while the
+   starfield warps (the canvas has its own `view-transition-name`, so it stays live
+   behind both snapshots), delays the loader until the exit finishes, flashes the
+   viewport, and names the reservation card `journey-stage` so View Transitions can
+   morph it into the log.
 8. `/viaje` reads the reservation from `GET /reservations/{id}`, moves it to
    `IN_PROGRESS` with `PATCH .../start`, and builds the log from the cached catalog
    plus `GET /episodes`. Completing the trip calls `PATCH .../complete`.

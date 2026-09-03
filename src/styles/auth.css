@@ -311,9 +311,14 @@
 
 /* Diálogo global */
 .passport-dialog {
+  /* Tailwind resetea el margen del dialog; se restaura el centrado nativo en la capa superior. */
+  position: fixed;
+  inset: 0;
   width: min(440px, calc(100% - 32px));
   max-height: calc(100vh - 32px);
+  margin: auto;
   padding: 0;
+  overflow: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   color: var(--ink);

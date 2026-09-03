@@ -35,18 +35,56 @@ function persistFormDraft(): void {
   travelStore.getState().setDraft(readDraft());
 }
 
-// La grilla se vuelve a renderizar; delegar el clic evita registrar listeners por tarjeta.
-function bindDestinationSelection(destinationGrid: HTMLDivElement): void {
-  destinationGrid.addEventListener('click', (event) => {
-    if (!(event.target instanceof Element)) return;
-    const button = event.target.closest<HTMLButtonElement>('[data-book-location]');
-    if (!button) return;
-    const id = Number(button.dataset.bookLocation);
-    travelStore.getState().setDraft({ destinationId: id, companionIds: [] });
-    syncFormFromDraft();
-    updateCompanions(id);
-    element('#reserva').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    showToast('Destino añadido a tu ruta', 'success');
+function chooseDestination(id: number, message = 'Destino añadido a tu ruta'): void {
+  travelStore.getState().setDraft({ destinationId: id, companionIds: [] });
+  syncFormFromDraft();
+  updateCompanions(id);
+  element('#reserva').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showToast(message, 'success');
+}
+
+// Catálogo y rutas destacadas se vuelven a renderizar; delegar el clic en el documento
+// evita registrar listeners por tarjeta.
+function bindDestinationSelection(signal: AbortSignal): void {
+  document.addEventListener(
+    'click',
+    (event) => {
+      if (!(event.target instanceof Element)) return;
+      const button = event.target.closest<HTMLButtonElement>('[data-book-location]');
+      if (!button) return;
+      chooseDestination(Number(button.dataset.bookLocation));
+    },
+    { signal },
+  );
+}
+
+// Mostrador de búsqueda: traslada destino, fecha y pasajeros a la consola de salto.
+function bindSearchDeck(): void {
+  const deck = document.getElementById('search-deck');
+  if (!(deck instanceof HTMLFormElement)) return;
+  const date = element<HTMLInputElement>('#deck-date');
+  const passengers = element<HTMLInputElement>('#deck-passengers');
+  date.min = tomorrow();
+  deck.querySelectorAll<HTMLButtonElement>('[data-deck-step]').forEach((button) => {
+    button.addEventListener('click', () => {
+      passengers.value = String(
+        Math.min(8, Math.max(1, Number(passengers.value) + Number(button.dataset.deckStep))),
+      );
+    });
+  });
+  deck.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const destinationId = Number(element<HTMLSelectElement>('#deck-destination').value);
+    if (!destinationId) {
+      showToast('Elige una coordenada de destino para calcular la tarifa', 'neutral');
+      element<HTMLSelectElement>('#deck-destination').focus();
+      return;
+    }
+    travelStore.getState().setDraft({
+      travelDate: date.value,
+      passengers: Number(passengers.value) || 1,
+    });
+    chooseDestination(destinationId, 'Tarifa calculada · revisa tu itinerario');
   });
 }
 
@@ -190,8 +228,8 @@ function bindSessionState(): () => void {
 export function bindEvents(): boolean {
   // Guardias explícitas de nulidad para los nodos raíz antes de registrar eventos.
   const bookingForm = document.getElementById('booking-form') as HTMLFormElement | null;
-  const destinationGrid = document.getElementById('destination-grid') as HTMLDivElement | null;
-  const reservationsList = document.getElementById('reservations-list') as HTMLDivElement | null;
+  const destinationGrid = document.getElementById('destination-grid');
+  const reservationsList = document.getElementById('reservations-list');
   if (bookingForm === null || destinationGrid === null || reservationsList === null) {
     console.error('No fue posible iniciar la aplicación: faltan elementos principales del DOM.');
     return false;
@@ -208,7 +246,8 @@ export function bindEvents(): boolean {
     },
     { capture: true, signal: lifecycle.signal },
   );
-  bindDestinationSelection(destinationGrid);
+  bindDestinationSelection(lifecycle.signal);
+  bindSearchDeck();
   bindBookingEvents(bookingForm);
   bindCatalogEvents();
   bindNavigationEvents(lifecycle.signal);

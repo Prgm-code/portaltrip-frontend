@@ -14,13 +14,20 @@ import {
   travelStore,
 } from 'stores/travelStore';
 import { createApiErrorPanel } from 'ui/apiErrorElements';
-import { createDestinationCard, createEmptyState, createSkeletonCard } from 'ui/appElements';
+import {
+  createDestinationCard,
+  createEmptyState,
+  createFeaturedCard,
+  createSkeletonCard,
+} from 'ui/appElements';
 import { createElement } from 'ui/dom';
-import { calculateQuote } from 'utils/travelRules';
+import { calculateQuote, formatCredits, requiresInsurance } from 'utils/travelRules';
 
 const PREVIEW_LIMIT_PER_LOCATION = 3;
 const SKELETON_COUNT = 6;
 const TYPE_FILTER_MIN_COUNT = 2;
+const FEATURED_LIMIT = 6;
+const FEATURED_MIN_RESIDENTS = 3;
 
 function locationRisk(location: Location): RiskLevel {
   return calculateQuote({ passengers: 1, tripType: TripType.EXPRESS, insurance: false }, location)
@@ -96,22 +103,77 @@ export function changePage(page: number): void {
   renderCatalog();
 }
 
-// El selector del formulario lista todo el catálogo ordenado por nombre.
+// Rutas destacadas: destinos de bajo riesgo con residentes visibles y su tarifa de salida.
+export function renderFeaturedRoutes(): void {
+  const container = document.getElementById('featured-routes');
+  if (!container) return;
+  const { locations, loading, error } = travelStore.getState();
+  if (error || (loading && !locations.length)) {
+    container.replaceChildren(...Array.from({ length: 4 }, createSkeletonCard));
+    return;
+  }
+  const featured = locations
+    .filter((location) => location.residentIds.length >= FEATURED_MIN_RESIDENTS)
+    .map((location) => ({ location, risk: locationRisk(location) }))
+    .sort((first, second) => {
+      const order = { LOW: 0, MEDIUM: 1, HIGH: 2 } as const;
+      return (
+        order[first.risk] - order[second.risk] ||
+        second.location.residentIds.length - first.location.residentIds.length
+      );
+    })
+    .slice(0, FEATURED_LIMIT);
+
+  if (!featured.length) {
+    container.replaceChildren(
+      createEmptyState('Sin rutas destacadas', 'El catálogo aún no responde.', true),
+    );
+    return;
+  }
+  container.replaceChildren(
+    ...featured.map(({ location, risk }, index) => {
+      const fare = calculateQuote(
+        { passengers: 1, tripType: TripType.EXPRESS, insurance: requiresInsurance(location) },
+        location,
+      );
+      const card = createFeaturedCard(
+        location,
+        getCharactersByIds(location.residentIds.slice(0, PREVIEW_LIMIT_PER_LOCATION)),
+        risk,
+        formatCredits(fare.total),
+      );
+      card.style.setProperty('--i', String(index));
+      return card;
+    }),
+  );
+}
+
+// Los selectores del formulario y del mostrador listan todo el catálogo ordenado por nombre.
 export function updateLocationOptions(): void {
   const state = travelStore.getState();
-  const destination = element<HTMLSelectElement>('#destinationId');
   const previousDestination = String(state.draft.destinationId || '');
   const sorted = [...state.locations].sort((first, second) =>
     first.name.localeCompare(second.name, 'es'),
   );
+  const targets: Array<[HTMLSelectElement | null, string]> = [
+    [document.getElementById('destinationId') as HTMLSelectElement | null, 'Selecciona un destino'],
+    [
+      document.getElementById('deck-destination') as HTMLSelectElement | null,
+      'Elige una coordenada',
+    ],
+  ];
 
-  destination.replaceChildren(
-    new Option('Selecciona un destino', ''),
-    ...sorted.map(
-      (location) => new Option(`${location.name} · ${location.dimension}`, String(location.id)),
-    ),
-  );
-  destination.value = previousDestination;
+  targets.forEach(([select, placeholder]) => {
+    if (!select) return;
+    const current = select.value || previousDestination;
+    select.replaceChildren(
+      new Option(placeholder, ''),
+      ...sorted.map(
+        (location) => new Option(`${location.name} · ${location.dimension}`, String(location.id)),
+      ),
+    );
+    select.value = current;
+  });
 }
 
 // Solo aparecen los tipos con más de una coordenada; el resto sigue disponible por búsqueda.

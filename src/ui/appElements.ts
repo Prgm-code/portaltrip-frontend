@@ -69,6 +69,48 @@ function createDestinationArtwork(location: Location, residents: Character[]): H
   return artwork;
 }
 
+/** Tarjeta de ruta destacada con tarifa de salida, al estilo de un panel de ofertas. */
+export function createFeaturedCard(
+  location: Location,
+  residents: Character[],
+  risk: RiskLevel,
+  formattedFare: string,
+): HTMLElement {
+  const book = createElement(
+    'button',
+    { text: 'Reservar ', attrs: { type: 'button' }, dataset: { bookLocation: location.id } },
+    createElement('span', { text: '→', attrs: { 'aria-hidden': 'true' } }),
+  );
+  return createElement(
+    'article',
+    { className: 'featured-card' },
+    createDestinationArtwork(location, residents),
+    createElement(
+      'div',
+      { className: 'featured-body' },
+      createElement(
+        'div',
+        { className: 'card-topline' },
+        createElement('span', { text: location.type || 'Desconocido' }),
+        createRiskElement(risk),
+      ),
+      createElement('h3', { text: location.name }),
+      createElement('p', { className: 'dimension', text: location.dimension }),
+      createElement(
+        'div',
+        { className: 'featured-fare' },
+        createElement(
+          'div',
+          {},
+          createElement('span', { text: 'Desde' }),
+          createElement('strong', { text: formattedFare }),
+        ),
+        book,
+      ),
+    ),
+  );
+}
+
 export function createSkeletonCard(): HTMLElement {
   return createElement(
     'article',

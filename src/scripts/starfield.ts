@@ -8,7 +8,7 @@ interface Star {
 
 const STAR_COUNT = 260;
 const CRUISE_SPEED = 0.0009;
-const WARP_SPEED = 0.06;
+const WARP_SPEED = 0.085;
 
 function spawnStar(depth: number): Star {
   const roll = Math.random();
@@ -49,7 +49,7 @@ function startStarfield(canvas: HTMLCanvasElement): void {
 
   function paint(): void {
     if (!context) return;
-    warp += (warpTarget - warp) * 0.08;
+    warp += (warpTarget - warp) * (warpTarget > warp ? 0.14 : 0.06);
     const speed = CRUISE_SPEED + warp * WARP_SPEED;
     const centerX = width / 2;
     const centerY = height / 2;
@@ -70,8 +70,8 @@ function startStarfield(canvas: HTMLCanvasElement): void {
         continue;
       }
       const depth = 1 - star.z;
-      const size = 0.4 + depth * 1.7;
-      const color = starColor(star, 0.22 + depth * 0.7);
+      const size = 0.4 + depth * 1.7 + warp * 0.6;
+      const color = starColor(star, Math.min(1, 0.22 + depth * 0.7 + warp * 0.25));
 
       if (warp > 0.05) {
         context.strokeStyle = color;
@@ -113,12 +113,15 @@ function startStarfield(canvas: HTMLCanvasElement): void {
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) restart();
   });
-  // Un salto interdimensional acelera las estrellas hasta que la nueva página está en pantalla.
+  // Un salto interdimensional acelera las estrellas mientras las tarjetas se desvanecen
+  // y hasta que la nueva página terminó de abrirse desde el portal.
   document.addEventListener('astro:before-preparation', () => {
     warpTarget = 1;
   });
-  document.addEventListener('astro:after-swap', () => {
-    warpTarget = 0;
+  document.addEventListener('astro:page-load', () => {
+    window.setTimeout(() => {
+      warpTarget = 0;
+    }, 350);
   });
 }
 

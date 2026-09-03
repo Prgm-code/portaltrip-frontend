@@ -33,16 +33,63 @@ import 'styles/home.css';
           >
         </h1>
         <p class="hero-lead">
-          Explora planetas, estaciones y dimensiones fuera de este mundo. Tú eliges el destino;
-          nosotros calculamos el riesgo y estabilizamos la conexión.
+          Salidas diarias desde la Tierra C-137 a planetas, estaciones y dimensiones fuera de este
+          mundo. Tú eliges el destino; nosotros calculamos el riesgo y estabilizamos la conexión.
         </p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="#reserva">
-            Planear mi salto
-            <IconArrowRight size={16} stroke={2.2} aria-hidden="true" />
-          </a>
-          <a class="btn btn-ghost" href="#destinos">Explorar catálogo</a>
-        </div>
+
+        <!-- Invitación al pasaporte: los créditos de bienvenida pagan el primer salto. -->
+        <aside
+          class="credit-invite glass"
+          data-session-anonymous
+          aria-label="Créditos de bienvenida"
+        >
+          <div class="invite-badge">
+            <span aria-hidden="true">✦</span>
+            <b>5.000 CR</b>
+            <small>de regalo</small>
+          </div>
+          <div class="invite-copy">
+            <b>Tu primer salto lo paga la Ciudadela</b>
+            <p>
+              Crea tu pasaporte gratis y recibe 5.000 créditos de bienvenida. Alcanzan para
+              cualquier ruta express o de exploración.
+            </p>
+          </div>
+          <div class="invite-actions">
+            <button class="btn btn-primary" type="button" data-open-passport="register">
+              Crear pasaporte gratis
+              <IconArrowRight size={16} stroke={2.2} aria-hidden="true" />
+            </button>
+            <button class="btn btn-ghost" type="button" data-open-passport="login">
+              Ya tengo pasaporte
+            </button>
+          </div>
+        </aside>
+
+        <aside
+          class="credit-invite glass active"
+          data-session-authenticated
+          aria-label="Saldo del pasaporte"
+          hidden
+        >
+          <div class="invite-badge">
+            <span aria-hidden="true">◎</span>
+            <b data-account-balance>0 CR</b>
+            <small>disponibles</small>
+          </div>
+          <div class="invite-copy">
+            <b>Pasaporte activo, <span data-account-name>viajero</span></b>
+            <p>Tus créditos están listos. Elige un destino y confirma el salto en un solo paso.</p>
+          </div>
+          <div class="invite-actions">
+            <a class="btn btn-primary" href="#destinos">
+              Elegir destino
+              <IconArrowRight size={16} stroke={2.2} aria-hidden="true" />
+            </a>
+            <a class="btn btn-ghost" href="/#destinos" data-open-reservations>Mis reservas</a>
+          </div>
+        </aside>
+
         <ul class="hero-stats" aria-label="Protocolos de viaje">
           <li><IconPlanet size={16} stroke={1.8} aria-hidden="true" /> Riesgo calculado en vivo</li>
           <li>
@@ -55,13 +102,13 @@ import 'styles/home.css';
           </li>
           <li>
             <IconCoins size={16} stroke={1.8} aria-hidden="true" />
-            5.000 créditos al crear tu pasaporte
+            Cancelación con reembolso
           </li>
         </ul>
       </div>
 
       <div class="hero-visual">
-        <Portal size="clamp(260px, 34vw, 440px)" />
+        <Portal size="clamp(240px, 30vw, 400px)" />
         <section class="hero-readout glass" aria-label="Coordenadas del portal">
           <span class="hud-label">Coordenadas</span>
           <code>ORIGEN · TIERRA C-137</code>
@@ -83,8 +130,66 @@ import 'styles/home.css';
       </div>
     </section>
 
+    <!-- Buscador de salto al estilo de un mostrador de aerolínea. -->
+    <section class="search-deck glass" aria-labelledby="deck-title">
+      <form id="search-deck" class="deck-form" novalidate>
+        <div class="deck-field deck-origin">
+          <span class="deck-label">Origen</span>
+          <strong>Tierra C-137</strong>
+          <small>Terminal Ciudadela</small>
+        </div>
+        <label class="deck-field">
+          <span class="deck-label" id="deck-title">Destino</span>
+          <select class="control" id="deck-destination" name="destinationId">
+            <option value="">Elige una coordenada</option>
+          </select>
+        </label>
+        <label class="deck-field">
+          <span class="deck-label">Fecha del salto</span>
+          <input class="control" id="deck-date" name="travelDate" type="date">
+        </label>
+        <div class="deck-field">
+          <span class="deck-label">Pasajeros</span>
+          <span class="stepper">
+            <button type="button" data-deck-step="-1" aria-label="Restar pasajero">−</button>
+            <input
+              id="deck-passengers"
+              name="passengers"
+              type="number"
+              min="1"
+              max="8"
+              value="1"
+              readonly
+              aria-label="Cantidad de pasajeros"
+            >
+            <button type="button" data-deck-step="1" aria-label="Sumar pasajero">+</button>
+          </span>
+        </div>
+        <button class="btn btn-primary deck-submit" type="submit">
+          Buscar tarifa
+          <IconArrowRight size={16} stroke={2.2} aria-hidden="true" />
+        </button>
+      </form>
+      <p class="deck-note">
+        <span><i aria-hidden="true"></i> Cotización instantánea</span>
+        <span>Cobro en créditos del pasaporte</span>
+        <span>Cancelación con reembolso total</span>
+      </p>
+    </section>
+
+    <!-- Rutas destacadas: tarifas de salida como en un panel de ofertas. -->
+    <section class="featured" aria-labelledby="featured-title">
+      <div class="catalog-heading">
+        <div>
+          <span class="section-kicker">Rutas destacadas</span>
+          <h2 id="featured-title" class="section-title">Ofertas del multiverso</h2>
+        </div>
+        <p class="live-note"><i aria-hidden="true"></i> Tarifa express · 1 pasajero</p>
+      </div>
+      <div id="featured-routes" class="featured-routes" aria-live="polite"></div>
+    </section>
+
     <section class="workspace" aria-label="Planificador de viajes">
-      <BookingPanel />
       <div class="catalog-column">
         <div class="view-tabs" role="tablist" aria-label="Secciones">
           <button
@@ -112,6 +217,7 @@ import 'styles/home.css';
         <DestinationCatalog />
         <ReservationsPanel />
       </div>
+      <BookingPanel />
     </section>
   </main>
 

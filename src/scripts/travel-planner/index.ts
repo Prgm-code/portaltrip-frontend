@@ -1,6 +1,7 @@
 import { renderCompanions, renderPassportStep, renderQuote } from 'scripts/travel-planner/booking';
 import {
   renderCatalog,
+  renderFeaturedRoutes,
   updateLocationOptions,
   updateTypeOptions,
 } from 'scripts/travel-planner/catalog';
@@ -21,6 +22,7 @@ async function loadInitialData(): Promise<void> {
   state.setError(null);
   state.setLoading(true);
   renderCatalog(() => void loadInitialData());
+  renderFeaturedRoutes();
 
   try {
     // Ubicaciones y personajes llegan completos y en paralelo; se piden una sola vez.
@@ -32,9 +34,11 @@ async function loadInitialData(): Promise<void> {
     updateTypeOptions();
     renderCompanions();
     renderCatalog();
+    renderFeaturedRoutes();
   } catch {
     // El servicio ya guardó el error para que el catálogo lo muestre.
     renderCatalog(() => void loadInitialData());
+    renderFeaturedRoutes();
   }
 }
 
