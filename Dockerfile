@@ -1,11 +1,11 @@
-# Imagen de producción del frontend (Coolify, Docker o cualquier host de contenedores).
-# Etapa 1: compila el sitio estático con Astro.
+# Production image for the frontend (Coolify, Docker or any container host).
+# Stage 1: build the static site with Astro.
 FROM node:24-alpine AS build
 
 WORKDIR /app
 
-# URL pública de PortalTrip API. Se fija en tiempo de build porque Astro la incrusta en el bundle.
-# En Coolify: variable de entorno PUBLIC_API_URL marcada como "Build Variable".
+# Public PortalTrip API URL. Set at build time because Astro embeds it in the bundle.
+# In Coolify: environment variable PUBLIC_API_URL marked as "Build Variable".
 ARG PUBLIC_API_URL=http://localhost:8080
 ENV PUBLIC_API_URL=$PUBLIC_API_URL
 
@@ -17,7 +17,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
-# Etapa 2: sirve dist/ con nginx.
+# Stage 2: serve dist/ with nginx.
 FROM nginx:1.27-alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
