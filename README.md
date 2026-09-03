@@ -1,155 +1,194 @@
-# Hito 2 de **Curso - Java - Globant Talento Ready**
+# PortalTrip frontend
 
-## Portal de Turismo Interdimensional
+Browser app for an interdimensional travel desk. You pick a Rick and Morty location,
+choose up to three living companions, get a quote, and keep the booking on this
+machine. Starting a trip opens a journey log built from the same catalog.
 
-Aplicación demostrativa para explorar destinos, elegir acompañantes y guardar
-reservas interdimensionales con datos de
-[Rick and Morty API](https://rickandmortyapi.com/).
+This repository is the UI. The Java API is
+[`Prgm-code/portaltrip`](https://github.com/Prgm-code/portaltrip). The planner still
+loads catalog data from the public [Rick and Morty API](https://rickandmortyapi.com/).
+Reservations are stored in the browser, not on the Spring service.
 
-> Lo que comenzó como un ejercicio sencillo terminó con un poco de sobreingeniería:
-> se construyó más de lo necesario, pero se aprovechó para aprender y experimentar. 😅
+Live demo: [hito2-dl.vercel.app](https://hito2-dl.vercel.app)
 
-## Proyecto desplegado
+## Architecture
 
-[https://hito2-dl.vercel.app](https://hito2-dl.vercel.app)
-
-Astro se usa para las páginas y el HTML inicial. Toda la interacción del navegador
-está escrita con TypeScript Vanilla, eventos del DOM, `fetch`, módulos ES nativos y
-`localStorage`. Astro utiliza Vite como servidor de desarrollo y herramienta de
-compilación. Zustand se conserva únicamente para centralizar y persistir el estado.
-
-## Cumplimiento de la rúbrica — Hito 2
-
-### Pilar 1: modelado de datos en TypeScript
-
-| Requisito | Evidencia directa |
-| --- | --- |
-| Cero `any` | El código de `src/` no utiliza `any`; los errores externos se reciben como `unknown`. El proyecto extiende la configuración estricta de Astro en [`tsconfig.json`](tsconfig.json). |
-| Estados críticos con `enum` | [`src/models/reservation.ts`](src/models/reservation.ts) declara `TripType`, `RiskLevel`, `ReservationStatus` y `PlannerView`. [`src/models/rick-and-morty.ts`](src/models/rick-and-morty.ts) declara `CharacterStatus`. |
-| Interfaces estructuradas | Las entidades están declaradas como interfaces exportadas dentro de [`src/models/`](src/models/): `Reservation`, `ReservationDraft`, `Quote`, `Character`, `Location`, `Episode`, `ApiPage<T>` y contratos de petición. |
-| Entradas controladas | [`parseTripType()`](src/scripts/travel-planner/booking.ts) comprueba el valor recibido antes de convertirlo en un estado válido. No se confía solamente en una aserción `as`. |
-
-Las transiciones de una reserva también consumen los enums explícitamente en
-[`src/stores/travelStore.ts`](src/stores/travelStore.ts), por ejemplo:
-
-```ts
-reservation.status === ReservationStatus.CONFIRMED
-  ? { ...reservation, status: ReservationStatus.IN_PROGRESS }
-  : reservation;
-```
-
-### Pilar 2: DOM y formularios
-
-| Requisito | Evidencia directa |
-| --- | --- |
-| Guardias de nulidad | [`bindEvents()`](src/scripts/travel-planner/events.ts) obtiene los nodos raíz con `document.getElementById(...) as HTML...Element \| null` y comprueba explícitamente si son `null` antes de registrar eventos. |
-| Neutralización del formulario | [`submitReservation()`](src/scripts/travel-planner/booking.ts) ejecuta `event.preventDefault()` como primera instrucción. |
-| Controles especializados | Formulario, inputs, selects y áreas de texto usan tipos como `HTMLFormElement`, `HTMLInputElement`, `HTMLSelectElement` y `HTMLTextAreaElement`. |
-| Lectura y limpieza | [`readDraft()`](src/scripts/travel-planner/booking.ts) usa `FormData`, `trim()`, `Number()` y `parseTripType()`. |
-| Validación reactiva | [`validateReservation()`](src/utils/travelRules.ts) valida nombre, correo, fecha, pasajeros, acompañantes y seguro antes de guardar. |
-| Error visible | Los errores se insertan en un bloque accesible con `role="alert"` y contenido creado mediante `textContent`. |
-
-Flujo del formulario:
+Astro prints the first HTML. After that, the session is vanilla TypeScript: DOM
+events, `fetch`, and a Zustand store. There is no React tree and no form library.
+Vite is the bundler Astro already ships.
 
 ```text
-submit
-  → preventDefault()
-  → readDraft()
-  → validateReservation()
-  ├─ inválido: mostrar errores en el DOM
-  └─ válido: crear y persistir la reserva
+Browser
+├── Astro pages          file routes, first paint
+├── Astro components     static markup and slots
+├── Client scripts       events, rendering, WebGL
+├── Domain models        enums and interfaces
+├── Travel rules         quote + booking validation
+├── Zustand store        session state, persist reservations
+└── API client           fetch + timeout + typed errors
+        └── rickandmortyapi.com
 ```
 
-### Pilar 3: asincronía y bloques de control
+```mermaid
+flowchart TD
+  pages["Astro pages<br>/ /viaje /404"] --> layout["Layout.astro<br>ClientRouter, CRT overlay, StarField"]
+  pages --> components["Astro components<br>Portal, BookingPanel, catalog, reservations"]
+  components --> scripts["Client TypeScript"]
+  scripts --> planner["travel-planner/*"]
+  scripts --> journey["journey.ts"]
+  scripts --> portal["portal.ts Three.js"]
+  planner --> store["travelStore"]
+  journey --> store
+  planner --> rules["travelRules"]
+  planner --> api["rickAndMortyApi"]
+  journey --> api
+  store --> storage["localStorage['reservas']"]
+  api --> rm["rickandmortyapi.com"]
+```
 
-| Requisito | Evidencia directa |
-| --- | --- |
-| `async/await` | Las cargas iniciales, catálogo, acompañantes y viaje usan funciones `async`; no existen cadenas `.then()` anidadas. |
-| `try/catch/finally` | [`request<T>()`](src/services/rickAndMortyApi.ts) envuelve `fetch`, controla timeout y siempre finaliza el estado de carga. |
-| Validación HTTP | El servicio comprueba `response.ok` y lanza un error tipado para respuestas 4xx o 5xx. |
-| Carga antes de la red | [`loadInitialData()`](src/scripts/travel-planner/index.ts) y [`loadCatalog()`](src/scripts/travel-planner/catalog.ts) renderizan el indicador de carga antes de iniciar las peticiones. |
-| Error visible y reintento | [`src/ui/apiErrorElements.ts`](src/ui/apiErrorElements.ts) genera mensajes descriptivos dentro del DOM y botones de reintento. |
+### Rendering split
 
-Las ubicaciones y los personajes se cargan en paralelo con `Promise.all()`. No hay
-reintentos automáticos: si una petición falla, la interfaz explica el problema y deja
-que el usuario decida cuándo volver a intentar.
+| Layer | Lives in | Job |
+| :--- | :--- | :--- |
+| Routes | `src/pages/` | `/` planner, `/viaje` journey log, `/404` |
+| Shell | `src/layouts/Layout.astro` | document, View Transitions `ClientRouter`, starfield, CRT overlay, jump flash |
+| Markup | `src/components/` | header, booking form, catalog, reservations, portal canvas host |
+| Client boot | `src/scripts/app.ts`, `src/scripts/journey.ts` | start the planner or the log after each `astro:page-load` |
+| Planner | `src/scripts/travel-planner/` | form, catalog paging, quotes, reservation actions |
+| Scene | `src/scripts/portal.ts`, `src/scripts/starfield.ts` | slime portal (Three.js + custom shaders) and warp field (2D canvas) |
+| Transitions | `src/scripts/portal-jump.ts`, `src/styles/transitions.css` | origin of the jump, shared `journey-stage` name, CRT persist |
+| DOM factories | `src/ui/` | catalog cards, errors, journey view. Untrusted text goes through `textContent` |
+| Domain | `src/models/` | `TripType`, `RiskLevel`, `ReservationStatus`, `Reservation`, Rick and Morty types |
+| Rules | `src/utils/travelRules.ts` | quote breakdown and booking checks |
+| State | `src/stores/travelStore.ts` | Zustand vanilla store |
+| Network | `src/services/` | `fetch`, 8s timeout, `AbortController`, loading counter, `?apiError=` preview |
 
-## Funcionalidades
+Internal imports use path aliases from `tsconfig.json` (`models/*`, `services/*`,
+`stores/*`, and the rest). Relative `../../` climbs are not the convention here.
 
-- Catálogo paginado con búsqueda y filtro por tipo.
-- Formulario validado y cálculo automático de precio y riesgo.
-- Selección de hasta tres acompañantes vivos.
-- Reservas persistidas en `localStorage["reservas"]` mediante Zustand.
-- Inicio, cancelación y finalización de viajes.
-- Estados visibles de carga, vacío y error.
-- Página 404 personalizada.
+### Data flow
 
-## Tecnologías
+1. `Layout.astro` mounts the shell. `ClientRouter` keeps the CRT overlay and jump
+   flash across navigations (`transition:persist`).
+2. On `/`, `scripts/app.ts` waits for `#booking-form`, then `initializeApp()`.
+   Listeners bind once. Catalog and living characters load in parallel with
+   `Promise.all`.
+3. The form is the source of the draft. `readDraft()` uses `FormData`.
+   `validateReservation()` runs before `addReservation()`.
+4. Only `reservations` persist. The storage adapter writes a JSON array to
+   `localStorage["reservas"]`, not the default Zustand envelope.
+5. `startReservation()` moves `CONFIRMED → IN_PROGRESS` and navigates to `/viaje`.
+   `portal-jump.ts` records the click origin, flashes the viewport, and names the
+   reservation card `journey-stage` so View Transitions can morph it into the log.
+6. `/viaje` reads the in-progress booking from the store, then fetches location,
+   residents, and episodes for the log UI.
 
-- Astro 7 para páginas y componentes estáticos.
-- TypeScript Vanilla estricto para la interacción del navegador.
-- Vite, integrado por Astro, para desarrollo y compilación.
-- Módulos ES nativos.
-- Zustand 5 para estado y persistencia.
-- Tailwind CSS 4 para estilos.
-- Rick and Morty API como servicio externo.
-
-## Estructura principal
+Reservation states match the API:
 
 ```text
-src/
-├── components/   HTML inicial mediante componentes Astro
-├── models/       enums e interfaces del dominio
-├── pages/        rutas de la aplicación
-├── scripts/      eventos, formulario y renderizado Vanilla TypeScript
-├── services/     consumo de la API con fetch
-├── stores/       estado centralizado con Zustand
-├── ui/           creación de elementos del DOM
-└── utils/        validaciones y reglas del viaje
+CONFIRMED → IN_PROGRESS → COMPLETED
+    │              │
+    └──────────────┴──→ CANCELLED
 ```
 
-Los imports internos usan aliases declarados dentro de `compilerOptions.paths` en
-[`tsconfig.json`](tsconfig.json). Así se evita depender de rutas frágiles como
-`../../services/...`:
+`COMPLETED` and `CANCELLED` are terminal. The store ignores illegal transitions.
 
-```ts
-import type { Reservation } from "models/reservation";
-import { getLocations } from "services/rickAndMortyApi";
-import { travelStore } from "stores/travelStore";
-import { createElement } from "ui/dom";
-```
+### Why this shape
 
-Hay aliases específicos para `assets`, `components`, `layouts`, `models`, `scripts`,
-`services`, `stores`, `styles`, `ui` y `utils`; `@/*` queda disponible como acceso
-general a cualquier módulo dentro de `src/`.
+The catalog is remote and flaky. The booking is local and must survive a refresh.
+Keeping `fetch` in `services/` and persistence in `travelStore` means the planner
+can retry a 429 without rewriting the form. Astro is here for pages, View
+Transitions, and the first HTML. The planner is still a DOM app on purpose: typed
+events, no virtual DOM, no extra runtime.
 
-## Instalación y ejecución
+Quote math (base 1200, trip multipliers, station surcharge, insurance 190 per
+passenger, risk from resident count) lives in `travelRules.ts` so it can stay in
+sync with [`portaltrip`](https://github.com/Prgm-code/portaltrip). Wiring this UI
+to that API is future work. Until then the browser is the system of record.
 
-Requiere Node.js 22.12 o superior. El proyecto utiliza pnpm:
+## Stack
+
+- Astro 7 and Vite
+- TypeScript, `astro/tsconfigs/strict`
+- Zustand 5 (vanilla + persist)
+- Tailwind CSS 4
+- Three.js for the portal disc
+- Biome for format and lint
+- [Rick and Morty API](https://rickandmortyapi.com/) for catalog reads
+
+## Getting started
+
+Requires Node.js 24 and pnpm 10.
 
 ```bash
 pnpm install
 pnpm dev
-pnpm check
-pnpm build
 ```
 
-Los comandos solicitados literalmente por la rúbrica también son compatibles:
+Open `http://localhost:4321`. npm scripts (`npm install`, `npm run dev`) work if
+you do not use pnpm.
 
 ```bash
-npm install
-npm run dev
-npm run check
-npm run build
+pnpm check      # astro check && biome check
+pnpm build      # check, then astro build
+pnpm preview    # serve dist/
+pnpm format     # biome format --write .
 ```
 
-`check` ejecuta `astro check`. `build` ejecuta primero la misma verificación estricta
-de TypeScript y, solo si no hay errores, genera el sitio con `astro build`.
-
-Para revisar los estados visuales de error sin modificar el código:
+Force catalog error UI without editing code:
 
 ```text
-https://hito2-dl.vercel.app/?apiError=404
-https://hito2-dl.vercel.app/?apiError=429
-https://hito2-dl.vercel.app/?apiError=500
+http://localhost:4321/?apiError=404
+http://localhost:4321/?apiError=429
+http://localhost:4321/?apiError=500
 ```
+
+## Open source policy
+
+PortalTrip frontend is open source under the [MIT License](LICENSE).
+
+You may use, copy, modify, merge, publish, distribute, sublicense, and sell the
+software, provided the copyright notice and license text stay with the source.
+Contributions sent through pull requests are accepted under the same license.
+There is no CLA.
+
+What we will merge:
+
+- Bug fixes, tests, and accessibility patches
+- Documentation that matches the code
+- Features discussed in an issue when they keep the Astro + vanilla TypeScript split
+
+What we will not merge:
+
+- A second UI runtime (React, Vue, Svelte) for the planner
+- Persistence format changes without a migration plan for `localStorage["reservas"]`
+- Secrets, personal catalog dumps, or generated `dist/` / `node_modules/`
+
+Rick and Morty names, characters, and imagery belong to their owners. This project
+is a fan-made client of the unofficial [Rick and Morty API](https://rickandmortyapi.com/).
+It is not affiliated with Adult Swim, Cartoon Network, or the API authors. Do not
+use this repo to ship trademarked branding as if it were official.
+
+Security issues that are not a public bug report should go to the repository owner
+([@Prgm-code](https://github.com/Prgm-code)) in private. Do not open a public issue
+for credentials or exploit detail.
+
+## License
+
+[MIT](LICENSE). Copyright (c) 2026 Prgm-code.
+
+## Code of conduct
+
+Participation is governed by the [Contributor Covenant](CODE_OF_CONDUCT.md).
+Harassment, personal attacks, and publishing private information are out of
+scope for this project. Report incidents privately to
+[@Prgm-code](https://github.com/Prgm-code) or through
+[GitHub's abuse reporting](https://docs.github.com/en/communities/maintaining-your-safety-on-github/reporting-abuse-or-spam).
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before you open a pull request.
+
+Short version: fork from `main`, keep the patch small, run `pnpm check` and
+`pnpm build`, describe the risk to persistence or navigation if you touch those
+paths. Issues are welcome. So are reviews from people who did not write the code.
