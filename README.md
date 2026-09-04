@@ -10,6 +10,13 @@ This repository is the UI. The Java API is
 catalog, issues the JWT passport, grants the welcome credits and owns every
 reservation. The browser keeps only the session.
 
+## 🌐 Live deployment
+
+* **Web app:** https://portaltrip.prgm.codes
+* **API:** https://portaltrip-api.prgm.codes (`/health` for the status check)
+
+Both run on Coolify from this repository and [Prgm-code/portaltrip](https://github.com/Prgm-code/portaltrip); see the deployment section below.
+
 ## 🔌 Backend for this frontend
 
 **This frontend works with the PortalTrip API backend.** GitHub repository:
