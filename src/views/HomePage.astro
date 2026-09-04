@@ -110,6 +110,9 @@ const home = localizedPath(locale, '/');
 
       <div class="hero-visual">
         <Portal size="clamp(240px, 30vw, 400px)" />
+        <p class="portal-boson-cue" data-portal-bosons aria-live="polite" aria-hidden="true">
+          {copy.hero.portalBosonAlert}
+        </p>
         <section class="hero-readout glass" aria-label={copy.hero.readoutLabel}>
           <span class="hud-label">{copy.hero.coordinates}</span>
           <code>{copy.hero.origin}</code>
@@ -121,6 +124,7 @@ const home = localizedPath(locale, '/');
             data-label-boot={copy.hero.portalOpening}
             data-label-live={copy.hero.portalStable}
             data-label-fallback={copy.hero.portalDegraded}
+            data-label-bosons={copy.hero.portalBosonStatus}
           >
             <code>
               <span data-portal-link-status>{copy.hero.portalOpening}</span>

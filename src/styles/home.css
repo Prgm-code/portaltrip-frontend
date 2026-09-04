@@ -167,6 +167,58 @@
 
 .hero-visual .portal-wrap {
   animation: portal-drift 9s ease-in-out infinite;
+  transition: filter 0.9s ease;
+}
+
+.hero-visual .portal-wrap[data-bosons="needed"] {
+  filter: drop-shadow(0 0 22px rgb(255 179 71 / 0.38));
+}
+
+.portal-boson-cue {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  left: 50%;
+  width: min(74%, 280px);
+  padding: 16px 18px;
+  border: 1px solid rgb(255 179 71 / 0.5);
+  border-radius: 12px;
+  background: rgb(6 12 8 / 0.62);
+  color: rgb(255 232 190 / 0.95);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1.45;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: 0 0 14px rgb(255 179 71 / 0.45);
+  backdrop-filter: blur(8px);
+  translate: -50% -50%;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.7s ease,
+    visibility 0.7s ease;
+}
+
+.portal-boson-cue.is-on {
+  opacity: 1;
+  visibility: visible;
+  animation: boson-cue 2.4s ease-in-out infinite;
+}
+
+@keyframes boson-cue {
+  50% {
+    opacity: 0.84;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-boson-cue.is-on {
+    animation: none;
+  }
 }
 
 .hero-readout {
@@ -261,16 +313,19 @@
   box-shadow: 0 0 10px rgb(151 247 93 / 0.55);
 }
 
-.portal-link[data-state="fallback"] > code {
+.portal-link[data-state="fallback"] > code,
+.portal-link[data-bosons="needed"] > code {
   color: var(--orange);
   text-shadow: 0 0 12px rgb(255 179 71 / 0.35);
 }
 
-.portal-link[data-state="fallback"] .portal-link-pct {
+.portal-link[data-state="fallback"] .portal-link-pct,
+.portal-link[data-bosons="needed"] .portal-link-pct {
   color: var(--orange);
 }
 
-.portal-link[data-state="fallback"] .portal-link-meter {
+.portal-link[data-state="fallback"] .portal-link-meter,
+.portal-link[data-bosons="needed"] .portal-link-meter {
   border-color: rgb(255 179 71 / 0.35);
   color: var(--orange);
 }
@@ -278,7 +333,11 @@
 .portal-link[data-state="fallback"] .portal-link-meter::-webkit-meter-optimum-value,
 .portal-link[data-state="fallback"] .portal-link-meter::-webkit-meter-suboptimum-value,
 .portal-link[data-state="fallback"] .portal-link-meter::-webkit-meter-even-less-good-value,
-.portal-link[data-state="fallback"] .portal-link-meter::-moz-meter-bar {
+.portal-link[data-state="fallback"] .portal-link-meter::-moz-meter-bar,
+.portal-link[data-bosons="needed"] .portal-link-meter::-webkit-meter-optimum-value,
+.portal-link[data-bosons="needed"] .portal-link-meter::-webkit-meter-suboptimum-value,
+.portal-link[data-bosons="needed"] .portal-link-meter::-webkit-meter-even-less-good-value,
+.portal-link[data-bosons="needed"] .portal-link-meter::-moz-meter-bar {
   background: linear-gradient(90deg, #a85a18, var(--orange));
   box-shadow: 0 0 10px rgb(255 179 71 / 0.45);
 }

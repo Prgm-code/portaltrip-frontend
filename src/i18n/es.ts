@@ -73,6 +73,8 @@ export const es = {
     portalOpening: 'ENLACE · APERTURA',
     portalStable: 'ENLACE · ESTABLE',
     portalDegraded: 'ENLACE · DEGRADADO',
+    portalBosonStatus: 'ENLACE · BOSONES',
+    portalBosonAlert: 'Pasa el mouse sobre el portal para activar los bosones',
     portalLinkLevel: 'Nivel de conexión del portal',
   },
   deck: {

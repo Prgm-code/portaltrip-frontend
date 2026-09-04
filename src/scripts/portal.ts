@@ -152,6 +152,10 @@ const LINK_LEVEL = {
   fallback: 40,
 } as const;
 
+const BOSON_ALERT = 72;
+const BOSON_HOLD = 84;
+const STIR_GAIN = 0.04;
+
 type LinkState = keyof typeof LINK_LEVEL;
 
 function portalLinkPanel(wrap: Element | null): HTMLElement | null {
@@ -186,24 +190,49 @@ function readLinkBase(panel: HTMLElement, fallback: number): number {
   return Number.isFinite(value) ? value : fallback;
 }
 
-/** El limo crece con el enlace: 70% cabe en el hueco, 100% se asoma un poco. */
+/** El limo sigue el enlace: ~50% se encoge, 100% se asoma. */
 function scaleFromLink(value: number): number {
-  const t = (clampLink(value, 70, 100) - 70) / 30;
-  return 0.78 + t * 0.36;
+  const t = (clampLink(value, 40, 100) - 40) / 60;
+  return 0.5 + t * 0.64;
 }
 
-function liveLinkDisplay(base: number, hover: number): number {
+function liveLinkDisplay(base: number, hover: number, holding: boolean): number {
+  if (!holding) return base;
   return base + (99.4 - base) * clampLink(hover, 0, 1);
+}
+
+function takeFeed(panel: HTMLElement): number {
+  const feed = Number(panel.dataset.feed || 0);
+  panel.dataset.feed = '0';
+  return Number.isFinite(feed) && feed > 0 ? feed : 0;
+}
+
+function addFeed(panel: HTMLElement | null, amount: number): void {
+  if (!panel) return;
+  if (panel.dataset.bosons !== 'needed' && panel.dataset.bosons !== 'stirring') return;
+  panel.dataset.feed = String(Number(panel.dataset.feed || 0) + amount);
+}
+
+function pickHoldTarget(): number {
+  const roll = Math.random();
+  if (roll < 0.12) return 84 + Math.random() * 6;
+  if (roll < 0.38) return 90 + Math.random() * 4;
+  if (roll < 0.86) return 94 + Math.random() * 4;
+  return 98 + Math.random() * 1.2;
+}
+
+function pickSagTarget(now: number, seed: number): number {
+  return (
+    50 +
+    Math.sin(now / 1900 + seed) * 5.2 +
+    Math.sin(now / 640 + seed * 1.4) * 2.4 +
+    Math.sin(now / 310 + seed * 0.6) * 1.1
+  );
 }
 
 function pickLinkTarget(state: LinkState): number {
   const roll = Math.random();
-  if (state === 'live') {
-    if (roll < 0.12) return 84 + Math.random() * 6;
-    if (roll < 0.38) return 90 + Math.random() * 4;
-    if (roll < 0.86) return 94 + Math.random() * 4;
-    return 98 + Math.random() * 1.2;
-  }
+  if (state === 'live') return pickHoldTarget();
   if (state === 'fallback') {
     if (roll < 0.2) return 22 + Math.random() * 8;
     if (roll < 0.7) return 32 + Math.random() * 16;
@@ -228,19 +257,43 @@ function startLinkDrift(
   }
   const seed = Math.random() * Math.PI * 2;
   let current = from;
+  let leaking = false;
   let target = pickLinkTarget(state);
-  let nextAt = performance.now() + 220 + Math.random() * 480;
+  let holdUntil = 0;
+  let nextAt = performance.now() + 400 + Math.random() * 900;
   const loop = (now: number): void => {
     if (!panel.isConnected || panel.dataset.state !== state) return;
     if (!document.hidden) {
-      if (now >= nextAt) {
+      if (state === 'live') {
+        if (!holdUntil) holdUntil = now + 7000 + Math.random() * 8000;
+        const feed = takeFeed(panel);
+        if (!leaking && now >= holdUntil) leaking = true;
+        if (leaking) {
+          target = pickSagTarget(now, seed);
+          current += (target - current) * 0.0072;
+          current += feed * STIR_GAIN;
+          current = clampLink(current, 38, 99);
+          if (current >= BOSON_HOLD) {
+            leaking = false;
+            panel.dataset.bosons = '';
+            target = pickHoldTarget();
+            holdUntil = now + 11000 + Math.random() * 11000;
+          } else if (current < BOSON_ALERT) {
+            panel.dataset.bosons = 'needed';
+          } else {
+            panel.dataset.bosons = 'stirring';
+          }
+        } else if (now >= nextAt) {
+          target = pickHoldTarget();
+          nextAt = now + 500 + Math.random() * 1400;
+        }
+      } else if (now >= nextAt) {
         target = pickLinkTarget(state);
         nextAt = now + 260 + Math.random() * 980;
       }
-      const breath = Math.sin(now / 640 + seed) * 0.55 + Math.sin(now / 310 + seed * 1.7) * 0.25;
-      current += (target + breath - current) * 0.055;
+      const breath = Math.sin(now / 740 + seed) * 0.7 + Math.sin(now / 290 + seed * 1.7) * 0.32;
+      if (!leaking) current += (target + breath - current) * 0.048;
       setLinkBase(panel, current);
-      // En vivo el fotograma 3D pinta el medidor junto con el tamaño.
       if (state !== 'live') writeLinkLevel(pct, meter, current);
     }
     panel.dataset.drift = String(requestAnimationFrame(loop));
@@ -264,6 +317,7 @@ function paintPortalLink(wrap: Element | null, state: LinkState): void {
   const previous = meter?.value ?? LINK_LEVEL.boot;
   stopLinkAnim(panel);
   panel.dataset.state = state;
+  panel.dataset.bosons = '';
   setLinkBase(panel, previous);
   if (status && labels[state]) status.textContent = labels[state];
   if (!pct) return;
@@ -333,7 +387,23 @@ function startPortal(canvas: HTMLCanvasElement): void {
   let hover = 0;
   let hoverTarget = 0;
   let linkScale = 1;
+  let scaleVel = 0;
+  let chaosLive = chaos;
+  let lastPointer: { x: number; y: number } | null = null;
   const events = new AbortController();
+
+  function stirBosons(clientX: number, clientY: number): void {
+    const panel = portalLinkPanel(wrap);
+    if (!lastPointer) {
+      addFeed(panel, 18);
+      lastPointer = { x: clientX, y: clientY };
+      return;
+    }
+    const delta = Math.hypot(clientX - lastPointer.x, clientY - lastPointer.y);
+    lastPointer = { x: clientX, y: clientY };
+    const stroke = Math.min(delta, 52);
+    addFeed(panel, stroke * (0.55 + stroke / 52));
+  }
 
   function aimFromPointer(clientX: number, clientY: number): void {
     const box = (wrap ?? canvas).getBoundingClientRect();
@@ -346,29 +416,54 @@ function startPortal(canvas: HTMLCanvasElement): void {
     lookTarget.x = -y * 0.48;
     const dist = Math.hypot(x, y);
     hoverTarget = 0.24 + 0.76 * Math.max(0, 1 - dist);
+    stirBosons(clientX, clientY);
   }
 
   function resetAim(): void {
     lookTarget.x = 0;
     lookTarget.y = 0;
     hoverTarget = 0;
+    lastPointer = null;
+  }
+
+  function syncBosonCue(panel: HTMLElement, needed: boolean): void {
+    if (wrap instanceof HTMLElement) wrap.dataset.bosons = needed ? 'needed' : '';
+    const cue = wrap?.closest('.hero-visual')?.querySelector<HTMLElement>('[data-portal-bosons]');
+    if (cue) {
+      cue.classList.toggle('is-on', needed);
+      if (needed) cue.removeAttribute('aria-hidden');
+      else cue.setAttribute('aria-hidden', 'true');
+    }
+    const status = panel.querySelector('[data-portal-link-status]');
+    if (!status) return;
+    status.textContent = needed
+      ? (panel.dataset.labelBosons ?? status.textContent)
+      : (panel.dataset.labelLive ?? status.textContent);
   }
 
   function syncLiveLink(): void {
     const panel = portalLinkPanel(wrap);
     if (panel?.dataset.state !== 'live') {
-      linkScale += (1 - linkScale) * 0.12;
+      scaleVel += (1 - linkScale) * 0.09;
+      scaleVel *= 0.82;
+      linkScale += scaleVel;
       group.scale.setScalar(linkScale);
       return;
     }
     const pct = panel.querySelector('[data-portal-link-pct]');
     const meter = panel.querySelector('meter');
     const base = readLinkBase(panel, LINK_LEVEL.live);
-    const display = liveLinkDisplay(base, hover);
+    const holding = !panel.dataset.bosons;
+    const display = liveLinkDisplay(base, hover, holding);
     if (pct) writeLinkLevel(pct, meter, display);
-    const target = base >= 75 ? scaleFromLink(display) : 1;
-    linkScale += (target - linkScale) * 0.14;
-    group.scale.setScalar(linkScale);
+    if (base >= 80) panel.dataset.tuned = 'true';
+    const target = panel.dataset.tuned ? scaleFromLink(display) : 1;
+    scaleVel += (target - linkScale) * 0.085;
+    scaleVel *= 0.8;
+    linkScale += scaleVel;
+    const droop = Math.max(0, (BOSON_ALERT - display) / 55);
+    group.scale.set(linkScale * (1 + droop * 0.05), linkScale * (1 - droop * 0.1), linkScale);
+    syncBosonCue(panel, panel.dataset.bosons === 'needed');
   }
 
   function updateScrollTilt(): void {
@@ -508,14 +603,23 @@ function startPortal(canvas: HTMLCanvasElement): void {
     resize();
     const time = reduceMotion.matches ? 1.1 : (now - born) / 1000;
     portalMat.uniforms.uTime.value = time;
-    hover += (hoverTarget - hover) * 0.12;
+    const panel = portalLinkPanel(wrap);
+    const sagged = Boolean(panel?.dataset.bosons);
+    hover += (hoverTarget - hover) * (sagged ? 0.06 : 0.12);
     if (wrap && !wrap.classList.contains('portal-live')) {
       wrap.classList.add('portal-live');
       paintPortalLink(wrap, 'live');
     }
     syncLiveLink();
-    look.x += (lookTarget.x - look.x) * 0.08;
-    look.y += (lookTarget.y - look.y) * 0.08;
+    if (!chaos) {
+      const level = panel ? readLinkBase(panel, LINK_LEVEL.live) : 100;
+      const chaosTarget = Math.max(0, (BOSON_ALERT - level) / 38) * 0.62;
+      chaosLive += (chaosTarget - chaosLive) * 0.045;
+      portalMat.uniforms.uChaos.value = chaosLive;
+    }
+    const follow = sagged ? 0.042 : 0.08;
+    look.x += (lookTarget.x - look.x) * follow;
+    look.y += (lookTarget.y - look.y) * follow;
     group.rotation.x = restTilt.x + Math.sin(time * 0.22) * 0.05 + look.x + scrollTilt * 0.28;
     group.rotation.y = restTilt.y + Math.sin(time * 0.28) * 0.08 + look.y;
     group.rotation.z = look.y * 0.14;

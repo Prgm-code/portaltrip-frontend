@@ -73,6 +73,8 @@ export const en: Messages = {
     portalOpening: 'LINK · SPIN-UP',
     portalStable: 'LINK · HOLD',
     portalDegraded: 'LINK · FAILSAFE',
+    portalBosonStatus: 'LINK · BOSONS',
+    portalBosonAlert: 'Sweep the mouse over the portal to fire the bosons',
     portalLinkLevel: 'Portal link level',
   },
   deck: {
