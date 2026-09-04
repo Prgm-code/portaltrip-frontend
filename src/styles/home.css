@@ -162,10 +162,14 @@
   position: relative;
   display: grid;
   min-height: 420px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
   place-items: center;
 }
 
 .hero-visual .portal-wrap {
+  grid-column: 1 / -1;
+  grid-row: 1;
   animation: portal-drift 14s ease-in-out infinite;
   transition: filter 0.9s ease;
 }
@@ -180,59 +184,61 @@
 }
 
 .portal-boson-cue {
-  position: absolute;
-  z-index: 4;
-  top: 50%;
-  left: 50%;
-  width: min(74%, 280px);
-  padding: 16px 18px;
-  border: 1px solid rgb(255 179 71 / 0.5);
-  border-radius: 12px;
-  background: rgb(6 12 8 / 0.62);
+  grid-column: 2;
+  grid-row: 2;
+  align-self: stretch;
+  display: grid;
+  align-content: center;
+  width: 100%;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid rgb(255 179 71 / 0.4);
+  border-radius: 14px;
+  background: rgb(19 24 15 / 0.94);
   color: rgb(255 232 190 / 0.95);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  line-height: 1.45;
-  text-align: center;
-  text-transform: uppercase;
-  text-shadow: 0 0 14px rgb(255 179 71 / 0.45);
-  backdrop-filter: blur(8px);
-  translate: -50% -50%;
+  font-size: 14px;
+  line-height: 1.55;
   opacity: 0;
   visibility: hidden;
-  pointer-events: none;
   transition:
-    opacity 0.7s ease,
-    visibility 0.7s ease;
+    opacity 0.25s ease,
+    visibility 0.25s ease;
 }
 
 .portal-boson-cue.is-on {
   opacity: 1;
   visibility: visible;
-  animation: boson-cue 2.4s ease-in-out infinite;
 }
 
-@keyframes boson-cue {
-  50% {
-    opacity: 0.84;
+.portal-cue-touch {
+  display: none;
+}
+
+/* Only the unstable portal captures gestures; the rest of the page still scrolls. */
+.hero-visual .portal-wrap[data-bosons="needed"] {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (pointer: coarse) {
+  .portal-cue-mouse {
+    display: none;
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .portal-boson-cue.is-on {
-    animation: none;
+  .portal-cue-touch {
+    display: inline;
   }
 }
 
 .hero-readout {
-  position: absolute;
-  bottom: 6%;
-  left: 0;
+  position: relative;
+  grid-column: 1;
+  grid-row: 2;
+  width: 100%;
   display: grid;
   gap: 6px;
-  min-width: 228px;
+  min-width: 0;
   min-height: 104px;
   padding: 14px 16px;
   border-radius: 14px;
@@ -755,6 +761,8 @@
   }
 
   .hero-readout {
+    grid-column: 2;
+    grid-row: 1;
     position: static;
     margin-top: 14px;
   }
@@ -807,10 +815,14 @@
   }
 
   .hero-visual .portal-wrap {
+    grid-column: 1;
+    grid-row: 1;
     width: min(100%, 240px);
   }
 
   .hero-readout {
+    grid-column: 2;
+    grid-row: 1;
     position: static;
     min-width: 0;
     width: 100%;
@@ -822,8 +834,14 @@
     letter-spacing: 0.04em;
   }
 
+  .portal-boson-cue {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
   .hero-credit {
     position: static;
+    grid-row: 3;
     grid-column: 1 / -1;
     margin: 0;
   }

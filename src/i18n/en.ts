@@ -75,7 +75,9 @@ export const en: Messages = {
     portalDegraded: 'LINK · FAILSAFE',
     portalBosonStatus: 'LINK · BOSONS',
     portalBosonAlert:
-      'Move the pointer across the portal for a few seconds to stabilize it and earn credits',
+      'Move your mouse across the portal for a few seconds to stabilize it and earn credits.',
+    portalBosonTouchAlert:
+      'Slide your finger across the portal for a few seconds to stabilize it and earn credits.',
     portalLinkLevel: 'Portal link level',
   },
   deck: {

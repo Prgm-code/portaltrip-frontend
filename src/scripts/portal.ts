@@ -5,6 +5,7 @@ import { getActiveSession, isAuthenticated } from 'stores/sessionStore';
 import * as THREE from 'three';
 import { PortalActivityTracker } from './portal-activity';
 import { pickPortalFall, smoothPortalLevel } from './portal-motion';
+import { bindPortalPointer } from './portal-pointer';
 
 const PORTAL_VERT = `
 uniform float uTime;
@@ -750,24 +751,8 @@ export function startPortal(canvas: HTMLCanvasElement): void {
   sizeObserver.observe(canvas);
   document.addEventListener('astro:before-swap', dispose, { once: true, signal: events.signal });
 
-  const host = wrap ?? canvas;
-  host.addEventListener(
-    'pointermove',
-    (event) => {
-      if (event instanceof PointerEvent && event.isTrusted)
-        aimFromPointer(event.clientX, event.clientY);
-    },
-    { signal: events.signal },
-  );
-  host.addEventListener(
-    'pointerenter',
-    (event) => {
-      if (event instanceof PointerEvent && event.isTrusted)
-        aimFromPointer(event.clientX, event.clientY);
-    },
-    { signal: events.signal },
-  );
-  host.addEventListener('pointerleave', resetAim, { signal: events.signal });
+  const host = wrap instanceof HTMLElement ? wrap : canvas;
+  bindPortalPointer(host, { move: aimFromPointer, reset: resetAim }, events.signal);
   window.addEventListener('scroll', updateScrollTilt, { signal: events.signal, passive: true });
   updateScrollTilt();
 

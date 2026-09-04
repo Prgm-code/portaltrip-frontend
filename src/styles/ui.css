@@ -651,7 +651,7 @@ input[type="date"].control::-webkit-calendar-picker-indicator {
   animation: portal-spin 12s linear infinite reverse;
 }
 
-.portal-wrap:not(.portal-live) .portal-rings {
+.portal-fallback .portal-rings {
   display: block;
 }
 

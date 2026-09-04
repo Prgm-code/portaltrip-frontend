@@ -111,7 +111,8 @@ const home = localizedPath(locale, '/');
       <div class="hero-visual">
         <Portal size="clamp(240px, 30vw, 400px)" />
         <p class="portal-boson-cue" data-portal-bosons aria-live="polite" aria-hidden="true">
-          {copy.hero.portalBosonAlert}
+          <span class="portal-cue-mouse">{copy.hero.portalBosonAlert}</span>
+          <span class="portal-cue-touch">{copy.hero.portalBosonTouchAlert}</span>
         </p>
         <section class="hero-readout glass" aria-label={copy.hero.readoutLabel}>
           <span class="hud-label">{copy.hero.coordinates}</span>

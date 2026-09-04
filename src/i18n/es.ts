@@ -75,7 +75,9 @@ export const es = {
     portalDegraded: 'ENLACE · DEGRADADO',
     portalBosonStatus: 'ENLACE · BOSONES',
     portalBosonAlert:
-      'Mueve el puntero por el portal durante unos segundos para estabilizarlo y ganar créditos',
+      'Mueve el mouse sobre el portal durante unos segundos para estabilizarlo y ganar créditos.',
+    portalBosonTouchAlert:
+      'Desliza el dedo sobre el portal durante unos segundos para estabilizarlo y ganar créditos.',
     portalLinkLevel: 'Nivel de conexión del portal',
   },
   deck: {

@@ -51,7 +51,7 @@ function startStarfield(canvas: HTMLCanvasElement): void {
   function paint(elapsed = 1000 / 60): void {
     if (!context) return;
     const frames = elapsed / (1000 / 60);
-    warp += (warpTarget - warp) * (1 - (1 - (warpTarget > warp ? 0.14 : 0.06)) ** frames);
+    warp += (warpTarget - warp) * (1 - (1 - (warpTarget > warp ? 0.14 : 0.12)) ** frames);
     const speed = CRUISE_SPEED + warp * WARP_SPEED;
     const centerX = width / 2;
     const centerY = height / 2;
@@ -136,7 +136,7 @@ function startStarfield(canvas: HTMLCanvasElement): void {
   document.addEventListener('astro:page-load', () => {
     window.setTimeout(() => {
       warpTarget = 0;
-    }, 350);
+    }, 100);
   });
 }
 
