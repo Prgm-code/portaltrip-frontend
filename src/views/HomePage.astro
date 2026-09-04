@@ -126,16 +126,15 @@ const home = localizedPath(locale, '/');
               <span data-portal-link-status>{copy.hero.portalOpening}</span>
               <span class="portal-link-pct" data-portal-link-pct>12%</span>
             </code>
-            <div
+            <meter
               class="portal-link-meter"
-              role="meter"
-              aria-valuemin="0"
-              aria-valuemax="100"
-              aria-valuenow="12"
+              min="0"
+              max="100"
+              value="12"
               aria-label={copy.hero.portalLinkLevel}
             >
-              <span class="portal-link-fill" style="width: 12%"></span>
-            </div>
+              12%
+            </meter>
           </div>
         </section>
         <div class="credit-chip hero-credit">

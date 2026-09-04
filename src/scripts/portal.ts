@@ -171,16 +171,10 @@ function clampLink(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function writeLinkLevel(
-  fill: Element | null,
-  pct: Element,
-  meter: Element | null,
-  value: number,
-): void {
+function writeLinkLevel(pct: Element, meter: HTMLMeterElement | null, value: number): void {
   const shown = Math.round(clampLink(value, 0, 99));
   pct.textContent = `${shown}%`;
-  if (fill instanceof HTMLElement) fill.style.width = `${clampLink(value, 0, 100)}%`;
-  meter?.setAttribute('aria-valuenow', String(shown));
+  if (meter) meter.value = clampLink(value, 0, 100);
 }
 
 function pickLinkTarget(state: LinkState): number {
@@ -203,17 +197,15 @@ function pickLinkTarget(state: LinkState): number {
 
 function startLinkDrift(
   panel: HTMLElement,
-  fill: Element | null,
   pct: Element,
-  meter: Element | null,
+  meter: HTMLMeterElement | null,
   state: LinkState,
   from: number,
 ): void {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    writeLinkLevel(fill, pct, meter, LINK_LEVEL[state]);
+    writeLinkLevel(pct, meter, LINK_LEVEL[state]);
     return;
   }
-  if (fill instanceof HTMLElement) fill.style.transition = 'none';
   const seed = Math.random() * Math.PI * 2;
   let current = from;
   let target = pickLinkTarget(state);
@@ -227,7 +219,7 @@ function startLinkDrift(
       }
       const breath = Math.sin(now / 640 + seed) * 0.55 + Math.sin(now / 310 + seed * 1.7) * 0.25;
       current += (target + breath - current) * 0.055;
-      writeLinkLevel(fill, pct, meter, current);
+      writeLinkLevel(pct, meter, current);
     }
     panel.dataset.drift = String(requestAnimationFrame(loop));
   };
@@ -246,21 +238,15 @@ function paintPortalLink(wrap: Element | null, state: LinkState): void {
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const status = panel.querySelector('[data-portal-link-status]');
   const pct = panel.querySelector('[data-portal-link-pct]');
-  const fill = panel.querySelector('.portal-link-fill');
-  const meter = panel.querySelector('[role="meter"]');
-  const previous = Number(meter?.getAttribute('aria-valuenow') ?? LINK_LEVEL.boot);
+  const meter = panel.querySelector('meter');
+  const previous = meter?.value ?? LINK_LEVEL.boot;
   stopLinkAnim(panel);
   panel.dataset.state = state;
   if (status && labels[state]) status.textContent = labels[state];
   if (!pct) return;
   if (reduceMotion) {
-    if (fill instanceof HTMLElement) fill.style.transition = 'none';
-    writeLinkLevel(fill, pct, meter, target);
+    writeLinkLevel(pct, meter, target);
     return;
-  }
-  if (fill instanceof HTMLElement) {
-    fill.style.transition = 'width 1.05s linear';
-    fill.style.width = `${target}%`;
   }
   const started = performance.now();
   const duration = 1050;
@@ -268,12 +254,12 @@ function paintPortalLink(wrap: Element | null, state: LinkState): void {
     if (!panel.isConnected) return;
     const t = Math.min(1, (now - started) / duration);
     const value = previous + (target - previous) * t;
-    writeLinkLevel(fill, pct, meter, value);
+    writeLinkLevel(pct, meter, value);
     if (t < 1) {
       panel.dataset.tick = String(requestAnimationFrame(step));
       return;
     }
-    startLinkDrift(panel, fill, pct, meter, state, value);
+    startLinkDrift(panel, pct, meter, state, value);
   };
   panel.dataset.tick = String(requestAnimationFrame(step));
 }
