@@ -19,7 +19,7 @@
   --night: var(--night-0);
   --paper: var(--night-1);
   --muted: var(--ink-dim);
-  --dim: #5d7466;
+  --dim: #91a698;
   --green: var(--portal-green);
   --green-dark: #6fd43c;
   --green-glow: rgb(151 247 93 / 0.45);
@@ -27,12 +27,12 @@
   /* Bordes y cristal del HUD. */
   --line: rgb(151 247 93 / 0.18);
   --line-soft: rgb(232 245 233 / 0.09);
-  --surface: rgb(10 31 20 / 0.55);
+  --surface: rgb(10 22 17 / 0.94);
   --surface-2: rgb(151 247 93 / 0.05);
   --surface-3: rgb(151 247 93 / 0.09);
   --white: #ffffff;
   --radius: 18px;
-  --shadow: 0 30px 90px rgb(0 0 0 / 0.55);
+  --shadow: 0 16px 40px rgb(0 0 0 / 0.25);
   --glow-portal: 0 0 24px rgb(151 247 93 / 0.25);
   --font-display: "Space Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -91,6 +91,8 @@ code {
     scroll-behavior: auto !important;
     /* biome-ignore lint/complexity/noImportantStyles: Reduced-motion overrides must win the cascade. */
     animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: Respect reduced motion in hover transitions too. */
+    transition-duration: 0.01ms !important;
     /* biome-ignore lint/complexity/noImportantStyles: Reduced-motion overrides must win the cascade. */
     animation-iteration-count: 1 !important;
   }

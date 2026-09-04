@@ -37,7 +37,6 @@
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(18px) saturate(1.2);
 }
 
 .glass::before {
@@ -502,7 +501,7 @@ input[type="date"].control::-webkit-calendar-picker-indicator {
   isolation: isolate;
   place-items: center;
   pointer-events: auto;
-  filter: drop-shadow(0 0 28px rgb(151 247 93 / 0.28));
+  filter: drop-shadow(0 0 28px rgb(151 247 93 / 0.16));
   animation: portal-drift 8s ease-in-out infinite;
 }
 
@@ -652,7 +651,7 @@ input[type="date"].control::-webkit-calendar-picker-indicator {
   animation: portal-spin 12s linear infinite reverse;
 }
 
-.portal-fallback .portal-rings {
+.portal-wrap:not(.portal-live) .portal-rings {
   display: block;
 }
 
@@ -903,5 +902,54 @@ input[type="date"].control::-webkit-calendar-picker-indicator {
 
   .hud-right {
     gap: 8px;
+  }
+}
+
+@media (max-width: 460px) {
+  .hud-header {
+    height: auto;
+    min-height: 66px;
+    padding-block: 8px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .hud-right {
+    display: contents;
+  }
+
+  .lang-switch {
+    justify-self: end;
+  }
+
+  .lang-switch a {
+    min-height: 40px;
+    display: grid;
+    align-items: center;
+  }
+
+  .hud-session {
+    grid-column: 1 / -1;
+    justify-content: end;
+    min-width: 0;
+  }
+
+  .hud-session .account {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .hud-account {
+    max-width: 100%;
+  }
+
+  .hud-account [data-account-name] {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 72px;
+  }
+
+  .hud-cta {
+    min-height: 44px;
   }
 }

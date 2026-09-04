@@ -48,11 +48,7 @@ export function locationTypeLabel(type: string, locale: Locale = currentLocale()
 }
 
 export function formatCredits(value: number, locale: Locale = currentLocale()): string {
-  return new Intl.NumberFormat(intlLocale(locale), {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(value);
+  return formatBalance(value, locale);
 }
 
 export function formatBalance(value: number, locale: Locale = currentLocale()): string {

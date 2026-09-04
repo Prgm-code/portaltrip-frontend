@@ -37,6 +37,7 @@ function startStarfield(canvas: HTMLCanvasElement): void {
   let warp = 0;
   let warpTarget = 0;
   let frame = 0;
+  let lastFrame = 0;
 
   function resize(): void {
     const ratio = Math.min(2, window.devicePixelRatio || 1);
@@ -47,9 +48,10 @@ function startStarfield(canvas: HTMLCanvasElement): void {
     context?.setTransform(ratio, 0, 0, ratio, 0, 0);
   }
 
-  function paint(): void {
+  function paint(elapsed = 1000 / 60): void {
     if (!context) return;
-    warp += (warpTarget - warp) * (warpTarget > warp ? 0.14 : 0.06);
+    const frames = elapsed / (1000 / 60);
+    warp += (warpTarget - warp) * (1 - (1 - (warpTarget > warp ? 0.14 : 0.06)) ** frames);
     const speed = CRUISE_SPEED + warp * WARP_SPEED;
     const centerX = width / 2;
     const centerY = height / 2;
@@ -58,7 +60,7 @@ function startStarfield(canvas: HTMLCanvasElement): void {
 
     for (const star of stars) {
       const previousDepth = star.z;
-      star.z -= speed;
+      star.z -= speed * frames;
       if (star.z <= 0.02) {
         Object.assign(star, spawnStar(1));
         continue;
@@ -93,18 +95,31 @@ function startStarfield(canvas: HTMLCanvasElement): void {
     }
   }
 
-  function loop(): void {
-    paint();
-    if (!reduceMotion.matches && !document.hidden) frame = requestAnimationFrame(loop);
+  function loop(now: number): void {
+    if (document.hidden) return;
+    const elapsed = lastFrame ? Math.min(100, now - lastFrame) : 1000 / 60;
+    // El fondo ambiental se dibuja a 30 fps; el salto conserva toda la fluidez.
+    if (
+      !lastFrame ||
+      elapsed >= 1000 / 30 ||
+      warpTarget > 0 ||
+      warp > 0.05 ||
+      reduceMotion.matches
+    ) {
+      paint(elapsed);
+      lastFrame = now;
+    }
+    if (!reduceMotion.matches) frame = requestAnimationFrame(loop);
   }
 
   function restart(): void {
     cancelAnimationFrame(frame);
-    loop();
+    lastFrame = 0;
+    frame = requestAnimationFrame(loop);
   }
 
   resize();
-  loop();
+  restart();
   window.addEventListener('resize', () => {
     resize();
     if (reduceMotion.matches) paint();

@@ -73,11 +73,10 @@
   inset: 0;
   background: repeating-linear-gradient(
     to bottom,
-    rgb(255 255 255 / 0.035) 0 1px,
+    rgb(255 255 255 / 0.012) 0 1px,
     transparent 1px 3px
   );
   mix-blend-mode: overlay;
-  animation: crt-flicker 4.2s steps(12) infinite;
 }
 
 .crt-layer::after {
@@ -109,7 +108,7 @@
     rgb(151 247 93 / 0.05) 55%,
     transparent
   );
-  animation: scanline-sweep 9s linear infinite;
+  display: none;
 }
 
 /* Destello del portal que sale del punto donde se abre el salto. */

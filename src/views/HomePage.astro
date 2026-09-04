@@ -225,6 +225,8 @@ const home = localizedPath(locale, '/');
             data-view="destinations"
             role="tab"
             aria-selected="true"
+            aria-controls="destinos"
+            tabindex="0"
           >
             {copy.workspace.explore}
           </button>
@@ -235,6 +237,8 @@ const home = localizedPath(locale, '/');
             data-view="reservations"
             role="tab"
             aria-selected="false"
+            aria-controls="reservas"
+            tabindex="-1"
           >
             {copy.workspace.reservations}
             <span id="reservation-count" class="tab-count">0</span>

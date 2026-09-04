@@ -92,20 +92,20 @@ void main() {
   cells = clamp(cells, 0.0, 1.0);
 
   vec3 dark = vec3(0.12, 0.45, 0.16);
-  vec3 mid = vec3(0.44, 0.83, 0.24);
-  vec3 hot = vec3(0.59, 0.97, 0.36);
-  vec3 core = vec3(0.87, 1.0, 0.7);
+  vec3 mid = vec3(0.26, 0.62, 0.16);
+  vec3 hot = vec3(0.48, 0.86, 0.27);
+  vec3 core = vec3(0.72, 0.94, 0.51);
   vec3 blob = vec3(0.06, 0.3, 0.12);
 
   vec3 col = mix(mid, hot, slime);
   col = mix(col, dark, (1.0 - slime) * 0.35);
-  col = mix(col, blob, cells * 0.7);
+  col = mix(col, blob, cells * 0.8);
   col = mix(col, core, pow(max(slime, 0.0), 4.0) * 0.45);
 
   float rim = smoothstep(0.08, 0.0, abs(r - border));
-  col = mix(col, core, rim * 0.7 * slimeMask);
+  col = mix(col, core, rim * 0.45 * slimeMask);
   col += hot * rim * 0.28 * slimeMask;
-  col += hot * glow * 0.5;
+  col += hot * glow * 0.25;
   col *= slimeMask + glow * 0.85;
 
   if (uChaos > 0.5) {
@@ -161,9 +161,15 @@ const BOSON_HOLD = 84;
 
 type LinkState = keyof typeof LINK_LEVEL;
 const activities = new WeakMap<HTMLElement, PortalActivityTracker>();
+const bosonCues = new WeakMap<HTMLElement, boolean>();
+const linkPanels = new WeakMap<Element, HTMLElement | null>();
 
 function portalLinkPanel(wrap: Element | null): HTMLElement | null {
-  return wrap?.closest('.hero-visual')?.querySelector('[data-portal-link]') ?? null;
+  if (!wrap) return null;
+  if (!linkPanels.has(wrap)) {
+    linkPanels.set(wrap, wrap.closest('.hero-visual')?.querySelector('[data-portal-link]') ?? null);
+  }
+  return linkPanels.get(wrap) ?? null;
 }
 
 function stopLinkAnim(panel: HTMLElement): void {
@@ -172,7 +178,7 @@ function stopLinkAnim(panel: HTMLElement): void {
   const tick = Number(panel.dataset.tick);
   const drift = Number(panel.dataset.drift);
   if (tick) cancelAnimationFrame(tick);
-  if (drift) cancelAnimationFrame(drift);
+  if (drift) window.clearTimeout(drift);
   panel.dataset.tick = '';
   panel.dataset.drift = '';
 }
@@ -183,8 +189,9 @@ function clampLink(value: number, min: number, max: number): number {
 
 function writeLinkLevel(pct: Element, meter: HTMLMeterElement | null, value: number): void {
   const shown = Math.round(clampLink(value, 0, 99));
-  pct.textContent = `${shown}%`;
-  if (meter) meter.value = clampLink(value, 0, 100);
+  const label = `${shown}%`;
+  if (pct.textContent !== label) pct.textContent = label;
+  if (meter && meter.value !== shown) meter.value = shown;
 }
 
 function setLinkBase(panel: HTMLElement, value: number): void {
@@ -250,6 +257,8 @@ function pickLinkTarget(state: LinkState): number {
 }
 
 function syncBosonCue(panel: HTMLElement, needed: boolean): void {
+  if (bosonCues.get(panel) === needed) return;
+  bosonCues.set(panel, needed);
   const wrap = panel.closest('.hero-visual')?.querySelector('.portal-wrap');
   if (wrap instanceof HTMLElement) wrap.dataset.bosons = needed ? 'needed' : '';
   const cue = wrap?.closest('.hero-visual')?.querySelector<HTMLElement>('[data-portal-bosons]');
@@ -260,9 +269,8 @@ function syncBosonCue(panel: HTMLElement, needed: boolean): void {
   }
   const status = panel.querySelector('[data-portal-link-status]');
   if (!status) return;
-  status.textContent = needed
-    ? (panel.dataset.labelBosons ?? status.textContent)
-    : (panel.dataset.labelLive ?? status.textContent);
+  const label = needed ? panel.dataset.labelBosons : panel.dataset.labelLive;
+  if (label && status.textContent !== label) status.textContent = label;
 }
 
 function startLinkDrift(
@@ -282,15 +290,16 @@ function startLinkDrift(
   let fall = pickPortalFall();
   let lastFrame = performance.now();
   let nextAt = performance.now() + 400 + Math.random() * 900;
-  const loop = (now: number): void => {
+  const loop = (): void => {
+    const now = performance.now();
     if (!panel.isConnected || panel.dataset.state !== state) {
       activities.get(panel)?.stop();
       return;
     }
-    const elapsedMs = Math.min(100, Math.max(0, now - lastFrame));
+    const elapsedMs = Math.min(200, Math.max(0, now - lastFrame));
     lastFrame = now;
     activities.get(panel)?.tick(now);
-    if (!document.hidden) {
+    if (!document.hidden && panel.dataset.visible !== 'false') {
       if (state === 'live') {
         // El limo solo se cae con pasaporte activo; barrerlo de vuelta cobra el estipendio en la Ciudadela.
         const activeUser = getActiveSession()?.accessToken;
@@ -360,9 +369,13 @@ function startLinkDrift(
         writeLinkLevel(pct, meter, current);
       }
     }
-    panel.dataset.drift = String(requestAnimationFrame(loop));
+    panel.dataset.drift = String(
+      window.setTimeout(loop, document.hidden || panel.dataset.visible === 'false' ? 1000 : 100),
+    );
   };
-  panel.dataset.drift = String(requestAnimationFrame(loop));
+  panel.dataset.drift = String(
+    window.setTimeout(loop, document.hidden || panel.dataset.visible === 'false' ? 1000 : 100),
+  );
 }
 
 function paintPortalLink(wrap: Element | null, state: LinkState): void {
@@ -408,8 +421,11 @@ function paintPortalLink(wrap: Element | null, state: LinkState): void {
   panel.dataset.tick = String(requestAnimationFrame(step));
 }
 
-function startPortal(canvas: HTMLCanvasElement): void {
+export function startPortal(canvas: HTMLCanvasElement): void {
   const wrap = canvas.closest('.portal-wrap');
+  const panel = portalLinkPanel(wrap);
+  const pct = panel?.querySelector('[data-portal-link-pct]') ?? null;
+  const meter = panel?.querySelector('meter') ?? null;
   const chaos = canvas.closest('.lost-portal') ? 1 : 0;
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -420,7 +436,7 @@ function startPortal(canvas: HTMLCanvasElement): void {
       alpha: true,
       antialias: true,
       premultipliedAlpha: false,
-      powerPreference: 'high-performance',
+      powerPreference: 'default',
     });
   } catch {
     showPortalFallback(wrap);
@@ -428,7 +444,12 @@ function startPortal(canvas: HTMLCanvasElement): void {
   }
 
   renderer.setClearColor(0x000000, 0);
-  renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
+  renderer.setPixelRatio(
+    Math.min(
+      window.matchMedia('(max-width: 820px)').matches ? 1.25 : 1.5,
+      window.devicePixelRatio || 1,
+    ),
+  );
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   const scene = new THREE.Scene();
@@ -491,7 +512,6 @@ function startPortal(canvas: HTMLCanvasElement): void {
   }
 
   function syncLiveLink(): void {
-    const panel = portalLinkPanel(wrap);
     if (panel?.dataset.state !== 'live') {
       scaleVel += (1 - linkScale) * 0.09;
       scaleVel *= 0.82;
@@ -499,8 +519,6 @@ function startPortal(canvas: HTMLCanvasElement): void {
       group.scale.setScalar(linkScale);
       return;
     }
-    const pct = panel.querySelector('[data-portal-link-pct]');
-    const meter = panel.querySelector('meter');
     const base = readLinkBase(panel, LINK_LEVEL.live);
     const holding = !panel.dataset.bosons;
     const display = liveLinkDisplay(base, hover, holding);
@@ -589,10 +607,16 @@ function startPortal(canvas: HTMLCanvasElement): void {
   const born = performance.now();
   let frame = 0;
   let visible = true;
+  let disposed = false;
+  let lastWidth = 0;
+  let lastHeight = 0;
 
   function resize(): void {
     const width = Math.max(1, canvas.clientWidth);
     const height = Math.max(1, canvas.clientHeight);
+    if (width === lastWidth && height === lastHeight) return;
+    lastWidth = width;
+    lastHeight = height;
     renderer.setSize(width, height, false);
     const aspect = width / height;
     if (aspect >= 1) {
@@ -649,10 +673,8 @@ function startPortal(canvas: HTMLCanvasElement): void {
   }
 
   function paint(now: number): void {
-    resize();
-    const time = reduceMotion.matches ? 1.1 : (now - born) / 1000;
+    const time = reduceMotion.matches ? 1.1 : (now - born) / 1400;
     portalMat.uniforms.uTime.value = time;
-    const panel = portalLinkPanel(wrap);
     const sagged = Boolean(panel?.dataset.bosons);
     hover += (hoverTarget - hover) * (sagged ? 0.06 : 0.12);
     if (wrap && !wrap.classList.contains('portal-live')) {
@@ -680,38 +702,53 @@ function startPortal(canvas: HTMLCanvasElement): void {
     renderer.render(scene, camera);
   }
 
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    cancelAnimationFrame(frame);
+    events.abort();
+    io.disconnect();
+    sizeObserver.disconnect();
+    if (panel) stopLinkAnim(panel);
+    portalGeo.dispose();
+    portalMat.dispose();
+    bubbleGeo.dispose();
+    bubbleMat.dispose();
+    sparkGeo.dispose();
+    sparkMat.dispose();
+    sparkTex.dispose();
+    renderer.dispose();
+  }
+
   function loop(now: number): void {
+    if (disposed) return;
     if (!canvas.isConnected) {
-      cancelAnimationFrame(frame);
-      events.abort();
-      const panel = portalLinkPanel(wrap);
-      if (panel) stopLinkAnim(panel);
-      portalGeo.dispose();
-      portalMat.dispose();
-      bubbleGeo.dispose();
-      bubbleMat.dispose();
-      sparkGeo.dispose();
-      sparkMat.dispose();
-      sparkTex.dispose();
-      renderer.dispose();
+      dispose();
       return;
     }
+    if (document.hidden || !visible) return;
     paint(now);
-    if (!reduceMotion.matches && !document.hidden && visible) {
-      frame = requestAnimationFrame(loop);
-    }
+    if (!reduceMotion.matches) frame = requestAnimationFrame(loop);
   }
 
   function restart(): void {
     cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(loop);
+    if (!disposed && !document.hidden && visible) frame = requestAnimationFrame(loop);
   }
 
   const io = new IntersectionObserver(([entry]) => {
-    visible = entry?.isIntersecting ?? true;
-    if (visible) restart();
+    visible = entry?.isIntersecting ?? false;
+    if (panel) panel.dataset.visible = String(visible);
+    restart();
   });
   io.observe(canvas);
+  const sizeObserver = new ResizeObserver(() => {
+    resize();
+    updateScrollTilt();
+    if (reduceMotion.matches) restart();
+  });
+  sizeObserver.observe(canvas);
+  document.addEventListener('astro:before-swap', dispose, { once: true, signal: events.signal });
 
   const host = wrap ?? canvas;
   host.addEventListener(
@@ -734,30 +771,11 @@ function startPortal(canvas: HTMLCanvasElement): void {
   window.addEventListener('scroll', updateScrollTilt, { signal: events.signal, passive: true });
   updateScrollTilt();
 
-  window.addEventListener('resize', () => {
-    updateScrollTilt();
-    if (reduceMotion.matches || document.hidden || !visible) paint(performance.now());
-  });
-  reduceMotion.addEventListener('change', restart);
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) restart();
-  });
+  reduceMotion.addEventListener('change', restart, { signal: events.signal });
+  document.addEventListener('visibilitychange', restart, { signal: events.signal });
 
+  resize();
   renderer.compile(scene, camera);
   paint(performance.now());
   restart();
 }
-
-const started = new WeakSet<HTMLCanvasElement>();
-
-function mountPortals(): void {
-  for (const node of document.querySelectorAll<HTMLCanvasElement>('.portal-canvas')) {
-    if (started.has(node)) continue;
-    started.add(node);
-    startPortal(node);
-  }
-}
-
-mountPortals();
-document.addEventListener('astro:after-swap', mountPortals);
-document.addEventListener('astro:page-load', mountPortals);

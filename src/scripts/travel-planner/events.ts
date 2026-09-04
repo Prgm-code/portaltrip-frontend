@@ -188,6 +188,26 @@ function bindNavigationEvents(signal: AbortSignal): void {
       }
     });
   });
+  document.querySelector<HTMLElement>('.view-tabs')?.addEventListener('keydown', (event) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-view]')];
+    const current = tabs.indexOf(document.activeElement as HTMLButtonElement);
+    if (current < 0) return;
+    event.preventDefault();
+    const index =
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? tabs.length - 1
+          : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+    const tab = tabs[index];
+    if (!tab) return;
+    tab.focus();
+    const view = tab.dataset.view;
+    if (view === PlannerView.DESTINATIONS || view === PlannerView.RESERVATIONS) {
+      setActiveView(view, false);
+    }
+  });
   const showReservations = (): void => {
     setActiveView(PlannerView.RESERVATIONS);
     element('.catalog-column').scrollIntoView({ behavior: 'smooth' });

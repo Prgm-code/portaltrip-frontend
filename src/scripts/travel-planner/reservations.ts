@@ -137,6 +137,7 @@ function applyActiveView(view: PlannerView): void {
     const active = tab.dataset.view === view;
     tab.classList.toggle('active', active);
     tab.setAttribute('aria-selected', String(active));
+    tab.tabIndex = active ? 0 : -1;
   });
   if (view === PlannerView.RESERVATIONS) renderReservations();
 }

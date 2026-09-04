@@ -9,10 +9,11 @@ const { class: className = '', size = '320px' } = Astro.props;
 
 <div class:list={['portal-wrap', className]} style={`--portal-size: ${size}`} aria-hidden="true">
   <span class="portal-bloom"></span>
+  <div class="portal-rings"></div>
   <canvas class="portal-canvas"></canvas>
   <div class="portal-hole"><slot /></div>
 </div>
 
 <script>
-import 'scripts/portal';
+import 'scripts/portal-loader';
 </script>

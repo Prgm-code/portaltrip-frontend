@@ -51,7 +51,8 @@ export function localizedPath(locale: Locale, path: string): string {
 }
 
 export function journeyPath(locale: Locale, reservationId: string): string {
-  return `${localizedPath(locale, '/viaje')}?id=${encodeURIComponent(reservationId)}`;
+  // Usar la ruta final evita redirecciones de directorio y conserva el origen actual.
+  return `${localizedPath(locale, '/viaje/')}?id=${encodeURIComponent(reservationId)}`;
 }
 
 /** Conserva query y hash del URL actual al cambiar de idioma. */
