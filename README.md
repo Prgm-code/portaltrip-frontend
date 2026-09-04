@@ -353,21 +353,23 @@ from **200 to 1620 credits**: a Gaussian base centered on 650, up to 50% for mov
 An incomplete sample returns zero, which is not a paid reward. The server owns cooldowns,
 rolling history, cycle validation and protection against duplicate payouts.
 
-### Run all three containers locally
+### Run locally
 
-From the backend checkout, with the repositories side by side:
+From the backend checkout, start the API and PostgreSQL:
 
 ```sh
-PORTALTRIP_FRONTEND_PATH=../portaltrip-frontend \
-  docker compose --env-file /dev/null -f compose.yml -f compose.frontend.yml up -d --build
+docker compose --env-file /dev/null up -d --build
 ```
 
-For the existing `code/Java/portaltrip/portaltrip` backend and `code/portaltrip-frontend`
-layout, omit `PORTALTRIP_FRONTEND_PATH`; the backend Compose file already defaults to
-that location. Frontend: `http://localhost:4321`. API: `http://localhost:8080`.
-The frontend API origin is embedded during the Docker build. The command skips `.env`;
-exported shell variables still apply. Fresh database volumes load the seed and reward
-tables automatically.
+Then, from this frontend checkout:
+
+```sh
+pnpm install
+pnpm dev
+```
+
+Frontend: `http://localhost:4321`. API: `http://localhost:8080`. No `.env` is needed
+with the local defaults. Fresh database volumes load the seed and reward tables automatically.
 
 For an existing database, apply the backend's `db/patch-portal-stipends.sql` before
 upgrading. In Coolify, run the patch in the PostgreSQL container, deploy the updated
