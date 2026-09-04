@@ -140,16 +140,19 @@ function renderJourney(
     }),
   );
 
-  element('#journey-loading').hidden = true;
-  content.hidden = false;
   bindRelationToggles(content);
   bindDetailModals(content, residents, episodes);
   bindJourneyCompletion(content);
+  const loadingBox = element('#journey-loading');
+  loadingBox.hidden = true;
+  loadingBox.style.viewTransitionName = 'none';
+  content.hidden = false;
 }
 
 function renderError(error: ApiErrorView | string, action?: HTMLElement): void {
   const loadingBox = element('#journey-loading');
   loadingBox.hidden = false;
+  loadingBox.style.viewTransitionName = 'none';
   loadingBox.replaceChildren(createJourneyError(error, action));
   const retry = loadingBox.querySelector<HTMLButtonElement>('[data-retry-journey]');
   if (!retry) return;

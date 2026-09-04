@@ -6,6 +6,7 @@
   inset: 0;
   z-index: -3;
   overflow: hidden;
+  view-transition-name: void-layer;
   background:
     radial-gradient(ellipse 60% 45% at 78% 12%, rgba(169, 245, 44, 0.13), transparent 70%),
     radial-gradient(ellipse 50% 40% at 8% 88%, rgba(121, 216, 230, 0.1), transparent 70%),
@@ -63,6 +64,7 @@
   z-index: 9998;
   overflow: hidden;
   pointer-events: none;
+  view-transition-name: crt-layer;
 }
 
 .crt-layer::before {
@@ -184,6 +186,32 @@
   animation: none;
 }
 
+::view-transition-group(void-layer) {
+  z-index: -3;
+  animation: none;
+}
+
+::view-transition-old(void-layer) {
+  display: none;
+}
+
+::view-transition-new(void-layer) {
+  animation: none;
+}
+
+::view-transition-group(crt-layer) {
+  z-index: 6;
+  animation: none;
+}
+
+::view-transition-old(crt-layer) {
+  display: none;
+}
+
+::view-transition-new(crt-layer) {
+  animation: none;
+}
+
 /* Antes de capturar la vista, la interfaz se desvanece hacia el portal (html.jumping). */
 html.jumping
 :is(
@@ -208,7 +236,6 @@ html.jumping
     .view-tabs,
     .booking-card,
     .view-panel,
-    .site-footer,
     .journey-hero,
     .mission-strip,
     .travel-log,
@@ -243,11 +270,31 @@ html.jumping .booking-card.glass::after {
   animation: jump-in 0.68s var(--ease-portal) both;
 }
 
-/* Elementos compartidos entre páginas. */
-::view-transition-group(portal-logo),
+/* El header no cruza fade: un morph + el swap hidratado al final se lee como recarga. */
 ::view-transition-group(hud-header) {
-  animation-duration: 0.55s;
-  animation-timing-function: var(--ease-out);
+  z-index: 3;
+  animation: none;
+}
+
+::view-transition-old(hud-header) {
+  display: none;
+}
+
+::view-transition-new(hud-header) {
+  animation: none;
+}
+
+::view-transition-group(site-footer) {
+  z-index: 1;
+  animation: none;
+}
+
+::view-transition-old(site-footer) {
+  display: none;
+}
+
+::view-transition-new(site-footer) {
+  animation: none;
 }
 
 ::view-transition-group(journey-stage) {
@@ -485,6 +532,22 @@ html.jumping .booking-card.glass::after {
   )
   > :nth-child(20) {
   --i: 19;
+}
+
+/* Las tarjetas entran con rise-in; si eso corre bajo la captura, al soltarla saltan. */
+html:active-view-transition
+  :is(
+    .destination-grid,
+    .reservations-list,
+    .story-grid,
+    .related-residents-grid,
+    .related-episodes-grid
+  )
+  > * {
+  animation: none;
+  filter: none;
+  opacity: 1;
+  transform: none;
 }
 
 @keyframes void-spin {

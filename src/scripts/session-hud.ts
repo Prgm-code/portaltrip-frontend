@@ -232,6 +232,10 @@ function bindDocument(): void {
   });
 
   sessionStore.subscribe(syncSessionHud);
+  // Hay que pintar la sesión antes de que el navegador capture la vista nueva.
+  // Si espera a page-load, el header del snapshot no coincide con el DOM vivo
+  // y al terminar el salto parece que la página recargó.
+  document.addEventListener('astro:after-swap', syncSessionHud);
   document.addEventListener('astro:page-load', () => {
     syncSessionHud();
     const dialog = passportDialog();

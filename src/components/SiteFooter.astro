@@ -6,7 +6,7 @@ const locale = resolveAstroLocale(Astro.currentLocale, Astro.url.pathname);
 const copy = messages[locale];
 ---
 
-<footer class="site-footer">
+<footer class="site-footer" transition:persist="site-footer">
   <PortalLogo class="opacity-80" href={localizedPath(locale, '/')} />
   <p>{copy.footer.blurb}</p>
   <div class="credit-chip">

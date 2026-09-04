@@ -56,3 +56,31 @@ export async function initializeApp(): Promise<void> {
   if (isAuthenticated()) void loadReservations();
   await catalog;
 }
+
+/** Pinta el planificador con datos en memoria antes de capturar la vista nueva. */
+export function paintPlannerIfCached(): boolean {
+  const form = document.getElementById('booking-form');
+  if (!form || form.dataset.booted) return false;
+  const locations = [...locationsById.values()].sort((first, second) => first.id - second.id);
+  if (locations.length === 0) return false;
+  if (!bindEvents()) return false;
+
+  form.dataset.booted = 'true';
+  const state = travelStore.getState();
+  state.resetDraft();
+  state.setLocations(locations);
+  state.setCompanions(getBaseCompanions());
+  state.setLoading(false);
+  state.setError(null);
+  renderPassportStep();
+  renderReservations();
+  setActiveView(state.activeView, false);
+  renderQuote();
+  updateLocationOptions();
+  updateTypeOptions();
+  renderCompanions();
+  renderCatalog();
+  renderFeaturedRoutes();
+  if (isAuthenticated()) void loadReservations();
+  return true;
+}

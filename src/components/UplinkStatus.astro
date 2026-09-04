@@ -41,6 +41,7 @@ async function probeUplink(): Promise<void> {
 
 window.addEventListener('online', () => void probeUplink());
 window.addEventListener('offline', paintUplink);
+document.addEventListener('astro:after-swap', paintUplink);
 document.addEventListener('astro:page-load', () => void probeUplink());
 void probeUplink();
 </script>

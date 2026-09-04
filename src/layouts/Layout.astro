@@ -56,7 +56,7 @@ const homeHref = localizedPath(locale, '/');
     <ClientRouter />
   </head>
   <body class="min-h-screen min-w-80 overflow-x-hidden">
-    <div class="void-layer" aria-hidden="true"></div>
+    <div class="void-layer" aria-hidden="true" transition:persist="void-layer"></div>
     <StarField />
     <div class="crt-layer" aria-hidden="true" transition:persist="crt-layer">
       <span class="scanline"></span>
