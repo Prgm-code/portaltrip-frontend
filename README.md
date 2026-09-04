@@ -38,31 +38,30 @@ This repository is the **frontend** of the PortalTrip capstone project. The back
 
 ## 🛠️ Tech Stack
 
-* **Backend:** Java 26, Spring Boot 4.1.1, Spring Data JPA, Hibernate 7.4, Spring Security 7.1 (JWT HS256), OpenAPI/Swagger (springdoc 3.1.0).
+* **Backend:** Java 26, Spring Boot 4.1.1, Spring Data JPA, Hibernate, Spring Security (JWT HS256), OpenAPI/Swagger (springdoc 3.1.0).
 * **Frontend:** strict TypeScript 6 (zero `any`, Biome `noExplicitAny: error`), Astro 7.1 on Vite 8, native ESM, semantic HTML5/CSS3, Zustand 5, Tailwind CSS 4, Three.js.
 * **Infrastructure:** Docker Compose, PostgreSQL 17 Alpine, multi-stage Dockerfile (Node 24 + nginx).
-* **Quality and Testing:** JUnit 6, Mockito 5, JaCoCo (100% instructions and branches), TDD & Clean Architecture in the API; `astro check` + Biome 2 in the UI.
+* **Quality and Testing:** JUnit, Mockito and JaCoCo in the API; `astro check`, Biome 2 and Node.js tests for portal activity, pointer input and the starfield in the UI.
 
-### Exact versions
+### Versions and configuration
 
 | Layer | Technology | Version |
 | :--- | :--- | :--- |
 | Backend | Java (Temurin) | 26 |
 | Backend | Spring Boot | 4.1.1 |
-| Backend | Spring Security (JWT HS256, OAuth2 Resource Server) | 7.1.1 |
-| Backend | Spring Data JPA + Hibernate ORM | 7.4.5 |
 | Backend | springdoc-openapi (Swagger UI) | 3.1.0 |
-| Backend | Maven Wrapper | 3.9.16 |
-| Backend | JUnit Jupiter / Mockito / JaCoCo | 6.0.3 / 5.23.0 / 0.8.15 |
 | Database | PostgreSQL (Docker `postgres:17-alpine`) | 17 |
-| Frontend | Node.js / pnpm | 24 / 10.34.5 |
+| Frontend | Node.js / pnpm (`package.json`) | 24 / 11.25.0 |
 | Frontend | Astro (on Vite 8.2) | 7.1.6 |
 | Frontend | TypeScript (`astro/tsconfigs/strict`, zero `any`) | 6.0.3 |
 | Frontend | Tailwind CSS | 4.3.3 |
 | Frontend | Zustand | 5.0.14 |
 | Frontend | Three.js | 0.185.1 |
 | Frontend | Biome (lint + format) | 2.5.7 |
-| Infrastructure | Docker Compose (`compose.yml`) + multi-stage Dockerfiles | Compose v2 |
+| Infrastructure | Docker Compose in the backend repository; frontend `Dockerfile` | Compose v2 |
+
+Frontend dependency versions come from [package.json](package.json) and [pnpm-lock.yaml](pnpm-lock.yaml).
+Backend dependency versions and coverage belong to the [API repository](https://github.com/Prgm-code/portaltrip).
 
 ---
 
@@ -74,9 +73,9 @@ This repository is the **frontend** of the PortalTrip capstone project. The back
 
 ---
 
-## 🚀 Local Setup Guide
+## Local setup guide
 
-No `.env` file is needed: the API `dev` profile ships defaults for the database, the JWT key and CORS (`http://localhost:4321`), and the UI points to `http://localhost:8080`. Requires Java 26, Docker, Node.js 24 and pnpm 10 (`npm install -g pnpm`).
+No `.env` file is needed: the API `dev` profile ships defaults for the database, the JWT key and CORS (`http://localhost:4321`), and the UI points to `http://localhost:8080`. Requires Docker, Node.js 24 and pnpm 11.25.0 (`npm install -g pnpm@11.25.0`). Java 26 is only needed when running or testing the backend outside Docker.
 
 ### 1. Start the Relational Database
 
@@ -93,7 +92,7 @@ PostgreSQL is now listening on `localhost:5432` (`rickandmorty` / `rick` / `mort
 ./mvnw clean test
 ```
 
-196 tests (JUnit Jupiter 6 + Mockito) run against in-memory H2; Docker is not required for this step.
+The backend tests run against in-memory H2; Docker is not required for this step. See the backend test output for the current test count.
 
 ### 3. Start the Backend Microservice
 
@@ -119,9 +118,37 @@ pnpm dev
 
 npm also works (`npm install`, `npm run dev`). With both repositories downloaded side by side there is nothing to configure: the UI targets `http://localhost:8080` and the API accepts the `http://localhost:4321` origin by default.
 
-Full cycle: create your passport from the header button (email and password), pick a destination, request a quote and confirm the reservation. The API stores it in PostgreSQL and the reservations list refreshes in the UI without reloading the page. `pnpm build` runs `astro check`, Biome and the production build with zero errors.
+Full cycle: create your passport from the header button (email and password), pick a destination, request a quote and confirm the reservation. The API stores it in PostgreSQL and the reservations list refreshes in the UI without reloading the page. `pnpm build` runs `astro check`, Biome and the production build. Run the Node.js test suite separately, as shown under [development commands and tests](#development-commands-and-tests).
 
-CORS is handled globally in `SecurityConfig` (`CorsConfigurationSource`, equivalent to `@CrossOrigin`) and allows `http://localhost:4321` and `http://localhost:5173` by default.
+The backend allows `http://localhost:4321` by default. Keep Astro on that port;
+`http://localhost:4322` is a different origin and needs its own CORS configuration.
+
+| Local service | How it runs | Port |
+| :--- | :--- | :--- |
+| Frontend | `pnpm dev` in this repository | `4321` |
+| API | Backend Compose service `app`, or Spring Boot locally | `8080` |
+| PostgreSQL | Backend Compose service `postgres` | `5432` |
+
+The frontend Nginx container is for testing the production image, not for the usual
+local development setup. Do not run it alongside Astro on port 4321. If Astro reports
+that the port is occupied, inspect the listener and containers before starting another
+instance:
+
+```bash
+ss -ltnp 'sport = :4321'  # Linux
+docker ps
+```
+
+If the listener is the frontend container from the image-test command below, stop that
+specific container, then run Astro again:
+
+```bash
+docker stop portaltrip-frontend
+pnpm dev --port 4321
+```
+
+`pn dev` can be used if you have a local wrapper for pnpm; the repository scripts use
+`pnpm dev`. A red uplink in the header means the browser could not confirm API health.
 
 ---
 
@@ -136,12 +163,18 @@ by nginx on port 80) and `nginx.conf`.
 3. Exposed port: `80`. Assign the frontend domain.
 4. In the API add that domain to `APP_CORS_ALLOWED_ORIGINS` (see the backend README).
 
-Local test of the image:
+The Dockerfile currently bootstraps pnpm 10.34.5, while `package.json` declares
+pnpm 11.25.0 for the project. Keep both files in view when updating the toolchain.
+
+To test the production image locally, stop Astro first so port 4321 is free:
 
 ```bash
 docker build --build-arg PUBLIC_API_URL=http://localhost:8080 -t portaltrip-frontend .
-docker run --rm -p 4321:80 portaltrip-frontend
+docker run --rm --name portaltrip-frontend -p 127.0.0.1:4321:80 portaltrip-frontend
 ```
+
+`nginx.conf` uses relative redirects (`absolute_redirect off`) to preserve the
+browser's host and published port when a route receives a trailing slash.
 
 ---
 
@@ -165,13 +198,15 @@ Browser
 
 ```mermaid
 flowchart TD
-  pages["Astro pages<br>/ /viaje /404"] --> layout["Layout.astro<br>ClientRouter, PassportDialog, toasts"]
+  pages["Astro pages<br>/ /en/ /viaje/ /en/viaje/ /404.html"] --> layout["Layout.astro<br>ClientRouter, PassportDialog, toasts"]
   pages --> components["Astro components<br>Portal, BookingPanel, catalog, reservations"]
   layout --> hud["session-hud.ts<br>account chip, dialog, expiry"]
   components --> scripts["Client TypeScript"]
   scripts --> planner["travel-planner/*"]
   scripts --> journey["journey.ts"]
-  scripts --> portal["portal.ts Three.js"]
+  scripts --> loader["portal-loader.ts<br>load near the viewport"]
+  loader --> portal["portal.ts Three.js"]
+  portal --> pointer["portal-pointer.ts<br>mouse and touch gestures"]
   portal --> activity["portal-activity.ts<br>movement and active time"]
   portal --> play["portalPlayStore<br>visual cadence"]
   activity --> api
@@ -193,19 +228,20 @@ flowchart TD
 
 | Layer | Lives in | Job |
 | :--- | :--- | :--- |
-| Routes | `src/pages/` | `/` planner, `/viaje` journey log, `/404` |
+| Routes | `src/pages/` | `/` and `/en/` planner; `/viaje/` and `/en/viaje/` journey log; `/404.html` |
 | Shell | `src/layouts/Layout.astro` | document, View Transitions `ClientRouter`, starfield, CRT overlay, jump flash, passport dialog, toast region |
 | Markup | `src/components/` | header with account chip, booking form with passport step, catalog, reservations, portal canvas host |
 | Client boot | `src/scripts/app.ts`, `src/scripts/journey.ts`, `src/scripts/session-hud.ts` | start the planner or the log after each `astro:page-load`; the HUD runs on every page |
 | Passport | `src/scripts/passport.ts` | register with fallback to login, passport mode switching, field reading |
 | Planner | `src/scripts/travel-planner/` | form, local catalog search and paging, instant quotes, purchase with idempotency, reservation actions |
-| Scene | `src/scripts/portal.ts`, `src/scripts/starfield.ts` | slime portal (Three.js + custom shaders) and warp field (2D canvas) |
+| Scene | `src/scripts/portal-loader.ts`, `src/scripts/portal.ts`, `src/scripts/starfield.ts` | lazy-loaded slime portal (Three.js + custom shaders) and warp field (2D canvas) |
 | Transitions | `src/scripts/portal-jump.ts`, `src/styles/transitions.css` | origin of the jump, shared `journey-stage` name, CRT persist |
 | DOM factories | `src/ui/` | catalog cards, errors, journey view. Untrusted text goes through `textContent` |
 | Domain | `src/models/` | `TripType`, `RiskLevel`, `ReservationStatus` (API codes plus Spanish labels), `Reservation`, catalog types, auth types |
 | Rules | `src/utils/travelRules.ts` | instant quote breakdown, booking and passport checks, credit formatting |
 | State | `src/stores/travelStore.ts`, `src/stores/sessionStore.ts`, `src/stores/portalPlayStore.ts` | catalog/draft in memory; session and play cadence persisted |
-| Portal activity | `src/scripts/portal-activity.ts`, `src/scripts/portal-motion.ts` | measured movement, sequential API requests, session-safe rewards and gradual motion |
+| Portal activity | `src/scripts/portal-pointer.ts`, `src/scripts/portal-activity.ts`, `src/scripts/portal-motion.ts` | mouse/touch input, measured movement, sequential API requests, session-safe rewards and gradual motion |
+| Languages | `src/i18n/` | Spanish by default, English under `/en/`, localized URLs, dates and CR amounts |
 | Network | `src/services/portalTripApi.ts` | `fetch`, 8s timeout, `AbortController`, envelope unwrapping, bearer header, `Idempotency-Key`, `?apiError=` preview |
 
 Internal imports use path aliases from `tsconfig.json` (`models/*`, `services/*`,
@@ -234,14 +270,17 @@ Internal imports use path aliases from `tsconfig.json` (`models/*`, `services/*`
 6. `localStorage["portaltrip-session"]` stores the token, expiry and profile.
    `localStorage["portaltrip-play"]` separately stores each user's visual play cadence.
    It cannot authorize rewards. A `401` clears the session and reopens the passport dialog.
-7. `startReservation()` navigates to `/viaje`. `portal-jump.ts` records the click
+7. The reservation link opens `/viaje/?id=…` or `/en/viaje/?id=…`. Its relative URL
+   keeps the current origin and port, and includes the final slash to avoid a directory
+   redirect. `portal-jump.ts` records the click
    origin, adds `html.jumping` so cards and panels vanish toward the portal while the
    starfield warps (the canvas has its own `view-transition-name`, so it stays live
    behind both snapshots), delays the loader until the exit finishes, flashes the
    viewport, and names the reservation card `journey-stage` so View Transitions can
    morph it into the log.
-8. `/viaje` reads the reservation from `GET /reservations/{id}`, moves it to
-   `IN_PROGRESS` with `PATCH .../start`, and builds the log from the cached catalog
+8. The journey page reads the reservation from `GET /reservations/{id}`. Only a
+   `CONFIRMED` reservation calls `startReservation()` with `PATCH .../start` to become
+   `IN_PROGRESS`; continuing an in-progress trip does not start it again. It builds the log from the cached catalog
    plus `GET /episodes`. Completing the trip calls `PATCH .../complete`.
 
 Reservation states match the API:
@@ -285,31 +324,26 @@ reservations panel shows them once as a local archive that can be discarded.
 - Biome for format and lint
 - [PortalTrip API](https://github.com/Prgm-code/portaltrip) for catalog, passport, credits and reservations
 
-## Getting started
+## Development commands and tests
 
-Requires Node.js 24, pnpm 10 and a running PortalTrip API.
-
-```bash
-# API (from the portaltrip repository). Its dev profile already ships the
-# database, JWT and CORS defaults for http://localhost:4321.
-docker compose up -d --build
-
-# UI, from the frontend checkout. No .env is needed; the API defaults to localhost:8080.
-pnpm install
-pnpm dev
-```
-
-Open `http://localhost:4321`. npm scripts (`npm install`, `npm run dev`) work if
-you do not use pnpm. The header pill pings `GET /health`, so a red uplink means the
-API is not reachable from the browser.
+Use Node.js 24 and pnpm 11.25.0. Follow the [local setup guide](#local-setup-guide)
+to start the backend and Astro. `pnpm preview` serves an existing `dist/` build;
+it is not the development server and also needs a free port.
 
 ```bash
-pnpm test:portal # 8 activity and motion tests using Node.js
-pnpm check      # astro check && biome check
-pnpm build      # check, then astro build
+pnpm test:portal # 8 activity and motion tests
+node --experimental-vm-modules --test tests/*.test.mjs # all 15 frontend tests
+pnpm check      # astro check && biome check .
+pnpm build      # check, then astro build; does not run the Node.js tests
 pnpm preview    # serve dist/
 pnpm format     # biome format --write .
 ```
+
+| Suite | Tests | Coverage |
+| :--- | :--- | :--- |
+| `tests/portal-activity.test.mjs` | 8 | measured activity, retries, session changes, hidden pages and gradual recovery |
+| `tests/portal-pointer.test.mjs` | 4 | mouse/touch input, single-finger capture, bounds, cancellation and cleanup |
+| `tests/starfield.test.mjs` | 3 | initial paint, ambient redraw limit, reduced motion and visibility changes |
 
 Force catalog error UI without editing code:
 
@@ -319,14 +353,51 @@ http://localhost:4321/?apiError=429
 http://localhost:4321/?apiError=500
 ```
 
+## Interface, loading and motion
+
+- The mobile header keeps its actions visible; the title precedes the portal. Layouts
+  have been checked from 320 to 1440 CSS pixels in Spanish and English.
+- Catalog metadata uses larger text and booking/pagination controls have larger touch
+  targets. The catalog/reservations tabs support arrow keys, Home and End.
+- Quotes, starting fares and account balances use `CR`, with locale-specific number
+  formatting. They are not displayed as USD.
+- The title keeps its glitch effect. Panel backgrounds are more opaque, portal glow
+  is softer, and the global CRT overlay no longer flickers or sweeps over the text.
+- `portal-loader.ts` imports Three.js when the canvas approaches the viewport. During
+  normal loading, the canvas remains transparent and no fallback wheel is rendered.
+  The CSS rings are created only if WebGL initialization fails.
+- The WebGL portal stops rendering offscreen or in a hidden tab. A `ResizeObserver`
+  updates canvas dimensions only when they change. Navigation disposes the renderer,
+  geometry, materials, textures, observers and listeners.
+- The starfield uses elapsed time and redraws at about 30 fps in ambient mode. During
+  the warp effect it uses animation-frame updates. The warp target returns to rest
+  100 ms after `astro:page-load`, then eases down more quickly than before.
+- The original 560 ms exit wait and page-transition choreography remain in place.
+  The shorter warp tail does not remove that wait or change the portal loading logic.
+- Reduced motion stops recurring WebGL/starfield animation and shortens CSS motion.
+  Portal activity and numerical connection updates remain available.
+
+Three.js still produces a chunk-size warning in the production build. Lazy loading
+defers that cost; it does not remove the dependency. No production Core Web Vitals
+improvement has been measured.
+
 ## Portal interaction and rewards
 
 Only authenticated travelers can encounter a portal failure. Each failure chooses a
 new target around 38–62% and its own descent speed. The level eases toward its target;
 it does not jump down or snap upward when a reward arrives. Movement provides immediate
 visual feedback while server-confirmed progress drives recovery. The interactive portal
-uses a `pointer` cursor while help is needed. Reduced-motion users retain the activity
-cycle and numerical updates while WebGL animation is reduced.
+uses a `pointer` cursor while help is needed.
+
+The instruction sits outside the portal rather than over its interaction area:
+
+- With a mouse, move across the portal without holding a button.
+- On touch devices, slide one finger across the unstable portal. The copy switches
+  to the finger instruction for a coarse primary pointer.
+- Only the unstable portal uses `touch-action: none`; touching the rest of the page
+  still scrolls. Releasing or cancelling the gesture releases pointer capture.
+- Additional fingers, untrusted events and movement outside the portal bounds do
+  not add activity. Mouse and touch feed the same server-validated reward cycle.
 
 `portalPlayStore` increases failure frequency gradually after successful help, with a
 bounded interval of roughly 8–21 seconds and heat that decays over time. This is a visual
@@ -353,23 +424,10 @@ from **200 to 1620 credits**: a Gaussian base centered on 650, up to 50% for mov
 An incomplete sample returns zero, which is not a paid reward. The server owns cooldowns,
 rolling history, cycle validation and protection against duplicate payouts.
 
-### Run locally
+### Database upgrades
 
-From the backend checkout, start the API and PostgreSQL:
-
-```sh
-docker compose --env-file /dev/null up -d --build
-```
-
-Then, from this frontend checkout:
-
-```sh
-pnpm install
-pnpm dev
-```
-
-Frontend: `http://localhost:4321`. API: `http://localhost:8080`. No `.env` is needed
-with the local defaults. Fresh database volumes load the seed and reward tables automatically.
+For a new local database, follow the [local setup guide](#local-setup-guide).
+The backend initializes its seed and reward tables on a fresh database volume.
 
 For an existing database, apply the backend's `db/patch-portal-stipends.sql` before
 upgrading. In Coolify, run the patch in the PostgreSQL container, deploy the updated
@@ -378,14 +436,18 @@ The old `/users/me/portal-stipend` route is no longer supported.
 
 ### Validation
 
-`pnpm test:portal` runs eight tests for measured activity, stationary/brief interaction,
-retry identity, session changes, hidden pages, smooth recovery, refresh-rate independence
-and variable descent. `pnpm build` runs Astro checks, Biome and the static production build.
-The test script uses Node's experimental VM-module flag to isolate browser dependencies.
+Run the complete command under [development commands and tests](#development-commands-and-tests).
+`pnpm test:portal` only runs the activity/motion file; it does not include pointer or
+starfield tests. The VM-module flag lets those tests isolate browser dependencies.
 
-For a manual check, sign in, wait for a failure, move across the portal for several
-seconds, and confirm a single temporary credit notice and an updated balance. Stop moving
-to check that no reward arrives from hovering alone. Repeat after a rest to compare fatigue.
+For a manual check, sign in and wait for a failure. Move the mouse across the portal,
+then repeat on a touch device by sliding one finger. Check that the instruction does
+not cover the portal, the touch gesture does not scroll the page, and the returned
+reward updates the balance once. A stationary pointer or finger must not earn activity.
+
+Reload the home page with a slow connection to verify that the wheel is absent during
+normal loading. Start or continue a reservation and check that the journey URL keeps
+`:4321` locally, that the original transition is intact and that the warp tail is brief.
 
 ## Open source policy
 

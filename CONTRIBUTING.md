@@ -19,7 +19,7 @@ rewrites navigation, persistence, or the API client, talk about it in an issue f
 
 ## Local setup
 
-You need Node.js 24 and [pnpm](https://pnpm.io/) 10.
+You need Node.js 24 and [pnpm](https://pnpm.io/) 11.25.0 (see `package.json`).
 
 ```bash
 git clone git@github.com:Prgm-code/portaltrip-frontend.git
@@ -28,8 +28,11 @@ pnpm install
 pnpm dev
 ```
 
-The app starts at `http://localhost:4321`. Catalog data comes from
-[rickandmortyapi.com](https://rickandmortyapi.com/) during development.
+The app starts at `http://localhost:4321`. Catalog data, sessions and reservations
+come from the PortalTrip API at `http://localhost:8080` by default. Follow the
+[README local setup guide](README.md#local-setup-guide) to start the backend.
+Keep port 4321 free for Astro; the production Nginx container uses the same port
+in the image-test example.
 
 ## What good changes look like
 
@@ -37,7 +40,10 @@ The app starts at `http://localhost:4321`. Catalog data comes from
 - Astro components own the first HTML. Browser behavior lives in `src/scripts/`, `src/ui/`, and `src/stores/`. Do not pull in React or another UI runtime.
 - DOM reads go through typed elements and null checks. Forms call `preventDefault()` before they read `FormData`.
 - Visible UI uses `textContent` (or equivalent) for untrusted strings. Do not assign `innerHTML` from API payloads.
-- Reservation writes go through `travelStore`. The persisted key remains `localStorage["reservas"]`, a JSON array.
+- Reservations are stored by the API; use the existing store and API client for writes.
+  `localStorage["portaltrip-session"]` persists the session and `localStorage["portaltrip-play"]`
+  persists visual play cadence. The old `localStorage["reservas"]` key is a legacy archive,
+  not the source of current reservations.
 - Quote and booking rules in `src/utils/travelRules.ts` should stay aligned with
   [`portaltrip`](https://github.com/Prgm-code/portaltrip) unless the PR explains a deliberate split.
 
@@ -46,19 +52,22 @@ The app starts at `http://localhost:4321`. Catalog data comes from
 Run these before you open a PR:
 
 ```bash
-pnpm check
+node --experimental-vm-modules --test tests/*.test.mjs
 pnpm build
 ```
 
 `pnpm check` runs `astro check` and Biome. `pnpm build` repeats that check and then
-emits `dist/`. Format with `pnpm format` if Biome complains about whitespace.
+emits `dist/`; it does not run the Node.js tests. `pnpm test:portal` only runs
+the activity/motion suite, so use the command above to include pointer and starfield
+tests. Format with `pnpm format` if Biome complains about whitespace.
 
 Manual pass for planner work:
 
 1. Load `/`, wait for the catalog, book a trip.
-2. Start the trip and confirm `/viaje` renders the log.
-3. Reload `/` and confirm `localStorage["reservas"]` still lists the booking.
-4. If you touched the API client, open `/?apiError=404`, `/?apiError=429`, and `/?apiError=500`.
+2. Start or continue the trip and confirm `/viaje/?id=…` renders the log without losing port 4321. Repeat under `/en/` for the English journey.
+3. Reload `/` and confirm the booking is fetched from the API and still appears in the reservations list.
+4. For portal changes, check mouse movement and single-finger dragging, the instruction position, initial loading without the fallback wheel, and reduced motion.
+5. If you touched the API client, open `/?apiError=404`, `/?apiError=429`, and `/?apiError=500`.
 
 ## Pull request review
 
