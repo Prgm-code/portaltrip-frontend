@@ -1,3 +1,4 @@
+import { formatJourneyDate, msg } from 'i18n';
 import type { Character, Episode, Location } from 'models/catalog';
 import { type Reservation, ReservationStatus } from 'models/reservation';
 import {
@@ -33,15 +34,6 @@ const MAX_JOURNEY_RESIDENTS = 24;
 let loaded = false;
 let loading = false;
 
-function formatDate(date: string): string {
-  return new Intl.DateTimeFormat('es-CL', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date(`${date}T12:00:00`));
-}
-
 function bindRelationToggles(content: HTMLElement): void {
   content.querySelectorAll<HTMLButtonElement>('[data-expand-relation]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -50,8 +42,11 @@ function bindRelationToggles(content: HTMLElement): void {
       if (!block) return;
       const expanded = block.classList.toggle('expanded');
       button.textContent = expanded
-        ? 'Mostrar menos ↑'
-        : `Mostrar los ${button.dataset.total} ${relation === 'episodes' ? 'capítulos' : 'personajes'} ↓`;
+        ? msg().journey.showLess
+        : msg().journey.showAll(
+            Number(button.dataset.total),
+            relation === 'episodes' ? 'episodes' : 'residents',
+          );
     });
   });
 }
@@ -94,25 +89,25 @@ function bindJourneyCompletion(content: HTMLElement): void {
   button.addEventListener('click', async () => {
     const reservationId = button.dataset.completeJourney ?? '';
     button.disabled = true;
-    button.textContent = 'Cerrando portal...';
+    button.textContent = msg().journey.closing;
     try {
       const completed = await completeReservation(reservationId);
-      if (completed.status !== ReservationStatus.COMPLETED) throw new Error('Estado inesperado');
-      button.textContent = 'Viaje completado ✓';
+      if (completed.status !== ReservationStatus.COMPLETED)
+        throw new Error(msg().journey.unexpectedStatus);
+      button.textContent = msg().journey.completed;
       content.querySelector<HTMLElement>('[data-journey-finale]')?.classList.add('completed');
       const kicker = content.querySelector<HTMLElement>('[data-finale-kicker]');
       const title = content.querySelector<HTMLElement>('[data-finale-title]');
       const copy = content.querySelector<HTMLElement>('[data-finale-copy]');
-      if (kicker) kicker.textContent = 'EXPEDICIÓN COMPLETADA';
-      if (title) title.textContent = 'Viaje completado con éxito.';
-      if (copy)
-        copy.textContent = 'La expedición quedó registrada como completada en la Ciudadela.';
-      showToast(`Expedición ${completed.number} completada`);
+      if (kicker) kicker.textContent = msg().journey.finaleDone;
+      if (title) title.textContent = msg().journey.finaleDoneTitle;
+      if (copy) copy.textContent = msg().journey.finaleDoneCopy;
+      showToast(msg().toasts.expeditionDone(completed.number));
     } catch (error) {
       button.disabled = false;
-      button.textContent = 'Completar viaje ✓';
+      button.textContent = msg().journey.complete;
       const view = getApiErrorView(error);
-      showToast(`${view.title}: ${view.message}`, 'neutral');
+      showToast(msg().toasts.toastPair(view.title, view.message), 'neutral');
     }
   });
 }
@@ -137,10 +132,10 @@ function renderJourney(
       residents,
       episodes,
       relatedEpisodes,
-      date: formatDate(reservation.travelDate),
+      date: formatJourneyDate(reservation.travelDate),
       teamNames: characters.length
         ? characters.map((character) => character.name).join(', ')
-        : 'sin acompañantes asignados',
+        : msg().journey.noCompanions,
       formattedTotal: formatCredits(reservation.quote.total),
     }),
   );
@@ -163,10 +158,10 @@ function renderError(error: ApiErrorView | string, action?: HTMLElement): void {
 
 function renderLocked(): void {
   renderError(
-    'Esta bitácora pertenece a un pasaporte. Ingresa para abrir el portal.',
+    msg().journey.locked,
     createElement('button', {
       className: 'btn btn-primary min-h-[40px] text-[12px]',
-      text: 'Ingresar con mi pasaporte',
+      text: msg().reservations.lockedSignIn,
       attrs: { type: 'button' },
       dataset: { openPassport: 'login' },
     }),
@@ -176,14 +171,14 @@ function renderLocked(): void {
 async function initializeJourney(): Promise<void> {
   if (loading || loaded) return;
   const reservationId = new URLSearchParams(window.location.search).get('id');
-  if (!reservationId) return renderError('Falta el identificador de la reserva.');
+  if (!reservationId) return renderError(msg().journey.missingId);
   if (!isAuthenticated()) return renderLocked();
 
   loading = true;
   try {
     let reservation = await getReservation(reservationId);
     if (reservation.status === ReservationStatus.CANCELLED)
-      return renderError('Esta reserva está cancelada y no puede iniciar el viaje.');
+      return renderError(msg().journey.cancelled);
     if (reservation.status === ReservationStatus.CONFIRMED) {
       reservation = await startReservation(reservation.id);
     }

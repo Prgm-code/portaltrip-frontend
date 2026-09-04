@@ -1,5 +1,8 @@
 ---
+import { messages, resolveAstroLocale } from 'i18n';
 import 'styles/reservations-dynamic.css';
+
+const copy = messages[resolveAstroLocale(Astro.currentLocale, Astro.url.pathname)];
 ---
 
 <section
@@ -11,10 +14,10 @@ import 'styles/reservations-dynamic.css';
 >
   <div class="catalog-heading">
     <div>
-      <span class="section-kicker">Bitácora de viaje</span>
-      <h2 class="section-title">Mis reservas</h2>
+      <span class="section-kicker">{copy.reservations.kicker}</span>
+      <h2 class="section-title">{copy.reservations.title}</h2>
     </div>
-    <p class="live-note"><i aria-hidden="true"></i> Sincronizadas con la Ciudadela</p>
+    <p class="live-note"><i aria-hidden="true"></i> {copy.reservations.live}</p>
   </div>
   <div id="legacy-notice" hidden></div>
   <div id="reservations-list" class="reservations-list"></div>

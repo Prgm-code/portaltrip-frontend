@@ -1,0 +1,46 @@
+---
+import Header from 'components/Header.astro';
+import Portal from 'components/Portal.astro';
+import SiteFooter from 'components/SiteFooter.astro';
+import { messages, resolveAstroLocale } from 'i18n';
+import Layout from 'layouts/Layout.astro';
+import 'styles/journey.css';
+import 'styles/journey-relations.css';
+import 'styles/journey-modal.css';
+
+const copy = messages[resolveAstroLocale(Astro.currentLocale, Astro.url.pathname)];
+---
+
+<Layout title={copy.meta.journeyTitle} description={copy.meta.journeyDescription}>
+  <Header mode="journey" />
+
+  <main class="shell journey-shell">
+    <div id="journey-loading" class="journey-loading" aria-live="polite">
+      <Portal size="clamp(200px, 26vw, 300px)">
+        <span class="portal-loader"></span>
+      </Portal>
+      <h1>{copy.journey.loadingTitle}</h1>
+      <p>{copy.journey.loadingCopy}</p>
+    </div>
+    <div id="journey-content" hidden></div>
+  </main>
+
+  <SiteFooter />
+
+  <dialog id="details-modal" class="details-modal" aria-labelledby="modal-title">
+    <div class="modal-scroll">
+      <button
+        class="modal-close"
+        type="button"
+        data-close-modal
+        aria-label={copy.journey.closeDetails}
+      >
+        ×
+      </button>
+      <div id="modal-content"></div>
+    </div>
+  </dialog>
+  <script>
+  import 'scripts/journey';
+  </script>
+</Layout>

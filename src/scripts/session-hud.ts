@@ -1,6 +1,7 @@
 // HUD de sesión compartido por todas las páginas: chip de cuenta, diálogo de pasaporte,
 // expiración del token y menú. Los listeners se delegan en `document` porque el router
 // reemplaza el header en cada salto.
+import { msg } from 'i18n';
 import type { PassportMode } from 'models/auth';
 import { PlannerView } from 'models/reservation';
 import { authenticate, readPassport, setPassportMode } from 'scripts/passport';
@@ -59,7 +60,10 @@ export function syncSessionHud(): void {
   if (readout) {
     readout.hidden = !session;
     readout.textContent = session
-      ? `PASAPORTE · ${session.user.fullName.toUpperCase()} · ${formatBalance(session.user.balance)}`
+      ? msg().hero.passportReadout(
+          session.user.fullName.toUpperCase(),
+          formatBalance(session.user.balance),
+        )
       : '';
   }
   scheduleExpiry(session ? sessionMillisecondsLeft(session) : 0);
@@ -133,7 +137,7 @@ async function submitPassportDialog(form: HTMLFormElement): Promise<void> {
     }
     closePassportDialog();
     form.reset();
-    showToast(`Pasaporte activo · ${formatBalance(result.session.user.balance)} disponibles`);
+    showToast(msg().toasts.passportActive(formatBalance(result.session.user.balance)));
   } finally {
     if (submit) submit.disabled = false;
     form.removeAttribute('aria-busy');
@@ -144,7 +148,7 @@ function logout(): void {
   sessionStore.getState().clearSession();
   travelStore.getState().setReservations([]);
   travelStore.getState().setReservationsStatus('idle');
-  showToast('Pasaporte cerrado. Tus reservas siguen en la Ciudadela.', 'neutral');
+  showToast(msg().toasts.signedOut, 'neutral');
 }
 
 function togglePassword(button: HTMLButtonElement): void {
@@ -153,7 +157,7 @@ function togglePassword(button: HTMLButtonElement): void {
   if (!input) return;
   const reveal = input.type === 'password';
   input.type = reveal ? 'text' : 'password';
-  button.textContent = reveal ? 'Ocultar' : 'Mostrar';
+  button.textContent = reveal ? msg().booking.hidePassword : msg().booking.showPassword;
   button.setAttribute('aria-pressed', String(reveal));
 }
 
@@ -224,14 +228,17 @@ function bindDocument(): void {
 
   document.addEventListener(SESSION_EXPIRED_EVENT, () => {
     syncSessionHud();
-    openPassportDialog(
-      'login',
-      'Tu sesión venció. Vuelve a ingresar para continuar donde estabas.',
-    );
+    openPassportDialog('login', msg().toasts.sessionExpired);
   });
 
   sessionStore.subscribe(syncSessionHud);
-  document.addEventListener('astro:page-load', syncSessionHud);
+  document.addEventListener('astro:page-load', () => {
+    syncSessionHud();
+    const dialog = passportDialog();
+    if (dialog) {
+      setPassportMode(dialog, dialog.dataset.passportMode === 'login' ? 'login' : 'register');
+    }
+  });
 }
 
 bindDocument();

@@ -1,6 +1,8 @@
 ---
-// Diálogo global de pasaporte: lo abren el header, la bitácora bloqueada y la
-// expiración de la sesión. La lógica vive en scripts/session-hud.ts.
+import { messages, resolveAstroLocale } from 'i18n';
+
+const locale = resolveAstroLocale(Astro.currentLocale, Astro.url.pathname);
+const copy = messages[locale];
 ---
 
 <dialog
@@ -11,16 +13,16 @@
   aria-labelledby="passport-dialog-title"
 >
   <div class="passport-dialog-body">
-    <button class="modal-close" type="button" data-close-passport aria-label="Cerrar pasaporte">
+    <button class="modal-close" type="button" data-close-passport aria-label={copy.passport.close}>
       ×
     </button>
-    <span class="section-kicker">Control de pasaportes</span>
-    <h2 id="passport-dialog-title" data-passport-title>Ingresa a tu pasaporte</h2>
+    <span class="section-kicker">{copy.passport.kicker}</span>
+    <h2 id="passport-dialog-title" data-passport-title>{copy.passport.login.title}</h2>
     <p class="passport-copy" data-passport-copy>
-      Usa el correo y la clave con los que creaste tu cuenta.
+      {copy.passport.login.copy}
     </p>
 
-    <div class="view-tabs passport-tabs" role="tablist" aria-label="Modo de pasaporte">
+    <div class="view-tabs passport-tabs" role="tablist" aria-label={copy.passport.tabs}>
       <button
         class="view-tab active"
         type="button"
@@ -28,7 +30,7 @@
         aria-selected="true"
         data-passport-mode="login"
       >
-        Ya tengo pasaporte
+        {copy.passport.tabLogin}
       </button>
       <button
         class="view-tab"
@@ -37,27 +39,27 @@
         aria-selected="false"
         data-passport-mode="register"
       >
-        Crear pasaporte
+        {copy.passport.tabRegister}
       </button>
     </div>
 
     <form id="passport-form" novalidate data-astro-reload>
       <p class="credit-badge" data-register-only>
         <span aria-hidden="true">✦</span>
-        +5.000 créditos de bienvenida
+        {copy.passport.welcomeCredits}
       </p>
       <label class="field" data-register-only>
-        <span class="field-label">Nombre completo</span>
+        <span class="field-label">{copy.booking.fullName}</span>
         <input
           class="control"
           name="fullName"
           type="text"
           autocomplete="name"
-          placeholder="Ej: Morty Smith"
+          placeholder={copy.passport.namePlaceholder}
         >
       </label>
       <label class="field">
-        <span class="field-label">Correo del pasaporte</span>
+        <span class="field-label">{copy.booking.email}</span>
         <input
           class="control"
           name="email"
@@ -67,7 +69,9 @@
         >
       </label>
       <label class="field">
-        <span class="field-label">Clave <small>8 caracteres o más</small></span>
+        <span class="field-label"
+          >{copy.booking.password} <small>{copy.booking.passwordHint}</small></span
+        >
         <span class="password-field">
           <input
             class="control"
@@ -78,13 +82,14 @@
             maxlength="64"
           >
           <button class="password-toggle" type="button" data-toggle-password aria-pressed="false">
-            Mostrar
+            {copy.booking.showPassword}
           </button>
         </span>
       </label>
       <div class="form-errors" data-passport-errors role="alert" hidden></div>
       <button class="btn btn-primary submit-btn" type="submit">
-        <span data-passport-submit>Ingresar</span><span aria-hidden="true">→</span>
+        <span data-passport-submit>{copy.passport.login.submit}</span
+        ><span aria-hidden="true">→</span>
       </button>
     </form>
   </div>

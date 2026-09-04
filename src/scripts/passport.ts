@@ -1,3 +1,4 @@
+import { msg } from 'i18n';
 import type { AuthSession, PassportInput, PassportMode } from 'models/auth';
 import { login, register } from 'services/portalTripApi';
 import {
@@ -15,26 +16,52 @@ export type PassportResult =
   | { ok: false; duplicate: true; errors: string[] }
   | { ok: false; duplicate?: false; errors: string[]; view?: ApiErrorView };
 
-const PASSPORT_COPY: Record<
-  PassportMode,
-  { title: string; copy: string; submit: string; switchLabel: string }
-> = {
-  register: {
-    title: 'Crea tu pasaporte',
-    copy: 'Recibes 5.000 créditos de bienvenida para tu primer salto.',
-    submit: 'Crear pasaporte',
-    switchLabel: '¿Ya tienes pasaporte? Ingresa con tu clave',
-  },
-  login: {
-    title: 'Ingresa a tu pasaporte',
-    copy: 'Usa el correo y la clave con los que creaste tu cuenta.',
-    submit: 'Ingresar',
-    switchLabel: '¿Aún no tienes pasaporte? Créalo y recibe 5.000 créditos',
-  },
-};
-
 export function passportCopy(mode: PassportMode) {
-  return PASSPORT_COPY[mode];
+  return msg().passport[mode];
+}
+
+/** Pinta etiquetas fijas del diálogo o del paso embebido. El layout persiste entre idiomas. */
+export function paintPassportChrome(scope: HTMLElement): void {
+  const copy = msg().passport;
+  const booking = msg().booking;
+  const kicker = scope.querySelector<HTMLElement>('.section-kicker');
+  if (kicker && scope.id === 'passport-dialog') kicker.textContent = copy.kicker;
+  scope.querySelectorAll<HTMLButtonElement>('[role="tab"][data-passport-mode]').forEach((tab) => {
+    tab.textContent = tab.dataset.passportMode === 'login' ? copy.tabLogin : copy.tabRegister;
+  });
+  const badge = scope.querySelector<HTMLElement>('.credit-badge');
+  if (badge) {
+    const mark = document.createElement('span');
+    mark.setAttribute('aria-hidden', 'true');
+    mark.textContent = '✦';
+    badge.replaceChildren(mark, document.createTextNode(` ${copy.welcomeCredits}`));
+  }
+  const fullName = scope.querySelector<HTMLInputElement>('[name="fullName"]');
+  if (fullName) {
+    fullName.placeholder =
+      scope.id === 'passport-dialog' ? copy.namePlaceholder : booking.fullNamePlaceholder;
+    const label = fullName.closest('label')?.querySelector('.field-label');
+    if (label) label.textContent = booking.fullName;
+  }
+  const email = scope.querySelector<HTMLInputElement>('[name="email"]');
+  if (email) {
+    const label = email.closest('label')?.querySelector('.field-label');
+    if (label) label.textContent = booking.email;
+  }
+  const password = scope.querySelector<HTMLInputElement>('[name="password"]');
+  if (password) {
+    const label = password.closest('label')?.querySelector('.field-label');
+    if (label instanceof HTMLElement) {
+      const hint = label.querySelector('small');
+      label.replaceChildren(booking.password, ' ');
+      if (hint) {
+        hint.textContent = booking.passwordHint;
+        label.append(hint);
+      }
+    }
+  }
+  const close = scope.querySelector<HTMLElement>('[data-close-passport]');
+  if (close) close.setAttribute('aria-label', copy.close);
 }
 
 export function parsePassportMode(value: string | undefined): PassportMode {
@@ -49,7 +76,8 @@ export function setPassportMode(scope: HTMLElement, mode: PassportMode): void {
     tab.classList.toggle('active', active);
     tab.setAttribute('aria-selected', String(active));
   });
-  const copy = PASSPORT_COPY[mode];
+  paintPassportChrome(scope);
+  const copy = passportCopy(mode);
   const title = scope.querySelector<HTMLElement>('[data-passport-title]');
   const description = scope.querySelector<HTMLElement>('[data-passport-copy]');
   const submit = scope.querySelector<HTMLElement>('[data-passport-submit]');
@@ -98,15 +126,15 @@ export async function authenticate(input: PassportInput): Promise<PassportResult
       return {
         ok: false,
         duplicate: true,
-        errors: ['Este correo ya tiene pasaporte. Ingresa tu clave para continuar.'],
+        errors: [msg().passport.duplicate],
       };
     }
     if (isUnauthorizedError(error)) {
-      return { ok: false, errors: ['Correo o clave incorrectos. Revisa tus datos.'] };
+      return { ok: false, errors: [msg().passport.badCredentials] };
     }
     const validation = getValidationMessages(error);
     if (validation.length) return { ok: false, errors: validation };
     const view = getApiErrorView(error);
-    return { ok: false, errors: [`${view.title}. ${view.message} ${view.hint}`], view };
+    return { ok: false, errors: [msg().errors.form(view.title, view.message, view.hint)], view };
   }
 }

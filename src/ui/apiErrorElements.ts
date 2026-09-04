@@ -1,3 +1,4 @@
+import { msg } from 'i18n';
 import type { ApiErrorView } from 'services/portalTripApiError';
 import { createElement } from 'ui/dom';
 
@@ -30,11 +31,11 @@ export function createApiErrorPanel(error: ApiErrorView, onRetry?: () => void): 
     createElement('span', {
       className:
         'rounded-full border border-[var(--orange)]/30 bg-[var(--orange)]/10 px-2.5 py-1 font-mono text-[10px] font-bold tracking-[.12em] text-[var(--orange)]',
-      text: `CÓDIGO · ${error.code}`,
+      text: msg().errors.panel.code(error.code),
     }),
     createElement('span', {
       className: 'font-mono text-[10px] font-bold uppercase tracking-[.14em] text-[var(--dim)]',
-      text: 'Anomalía detectada',
+      text: msg().errors.panel.anomaly,
     }),
   );
 
@@ -74,7 +75,7 @@ export function createApiErrorPanel(error: ApiErrorView, onRetry?: () => void): 
       className: 'btn btn-primary mt-4 min-h-[40px] text-[11px]',
       attrs: { type: 'button' },
     });
-    configureRetryButton(retry, 'Recalibrar portal →', onRetry);
+    configureRetryButton(retry, msg().errors.panel.retry, onRetry);
     content.append(retry);
   }
 
@@ -105,7 +106,7 @@ export function createApiFormErrorNotice(error: ApiErrorView, onRetry?: () => vo
       createElement('small', {
         className:
           'rounded-full bg-[var(--orange)]/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-[var(--orange)]',
-        text: `CÓDIGO ${error.code}`,
+        text: msg().errors.panel.codeShort(error.code),
       }),
     ),
     createElement('p', {
@@ -120,7 +121,7 @@ export function createApiFormErrorNotice(error: ApiErrorView, onRetry?: () => vo
         'col-start-2 mt-2 w-max cursor-pointer border-0 bg-transparent p-0 text-[10px] font-extrabold text-[var(--green)] hover:underline disabled:cursor-wait disabled:opacity-60',
       attrs: { type: 'button' },
     });
-    configureRetryButton(retry, 'Recalibrar formulario →', onRetry);
+    configureRetryButton(retry, msg().errors.panel.retryForm, onRetry);
     notice.append(retry);
   }
 
@@ -138,7 +139,7 @@ export function createApiFormLoadingNotice(): HTMLElement {
     },
     createElement('span', { className: 'spinner', attrs: { 'aria-hidden': 'true' } }),
     createElement('span', {
-      text: 'Sincronizando destinos y acompañantes antes de habilitar la reserva...',
+      text: msg().errors.panel.loading,
     }),
   );
 }

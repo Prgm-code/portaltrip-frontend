@@ -1,6 +1,9 @@
 ---
 import { IconSearch } from '@tabler/icons-astro';
+import { messages, resolveAstroLocale } from 'i18n';
 import 'styles/catalog.css';
+
+const copy = messages[resolveAstroLocale(Astro.currentLocale, Astro.url.pathname)];
 ---
 
 <section
@@ -12,32 +15,32 @@ import 'styles/catalog.css';
 >
   <div class="catalog-heading">
     <div>
-      <span class="section-kicker">Catálogo multiversal</span>
-      <h2 class="section-title">Elige tu próximo destino</h2>
+      <span class="section-kicker">{copy.catalog.kicker}</span>
+      <h2 class="section-title">{copy.catalog.title}</h2>
     </div>
-    <p class="live-note"><i aria-hidden="true"></i> Catálogo sincronizado con la Ciudadela</p>
+    <p class="live-note"><i aria-hidden="true"></i> {copy.catalog.live}</p>
   </div>
 
   <div class="catalog-tools">
     <label class="search-box">
       <IconSearch size={17} stroke={1.9} aria-hidden="true" />
-      <span class="sr-only">Buscar destino</span>
+      <span class="sr-only">{copy.catalog.search}</span>
       <input
         class="control"
         id="location-search"
         type="search"
-        placeholder="Buscar planeta, dimensión..."
+        placeholder={copy.catalog.searchPlaceholder}
       >
     </label>
     <label class="filter-box">
-      <span class="sr-only">Filtrar por tipo</span>
+      <span class="sr-only">{copy.catalog.filterType}</span>
       <select class="control" id="type-filter">
-        <option value="all">Todos los tipos</option>
-        <option value="Planet">Planetas</option>
-        <option value="Space station">Estaciones</option>
-        <option value="Dimension">Dimensiones</option>
-        <option value="Microverse">Microversos</option>
-        <option value="TV">TV</option>
+        <option value="all">{copy.catalog.allTypes}</option>
+        <option value="Planet">{copy.catalog.types.Planet}</option>
+        <option value="Space station">{copy.catalog.types['Space station']}</option>
+        <option value="Dimension">{copy.catalog.types.Dimension}</option>
+        <option value="Microverse">{copy.catalog.types.Microverse}</option>
+        <option value="TV">{copy.catalog.types.TV}</option>
       </select>
     </label>
   </div>
@@ -45,11 +48,11 @@ import 'styles/catalog.css';
   <div id="catalog-status" class="catalog-status" aria-live="polite"></div>
   <div id="destination-grid" class="destination-grid"></div>
 
-  <nav class="pagination" aria-label="Paginación de destinos">
-    <button class="page-btn" id="previous-page" type="button" aria-label="Página anterior">
+  <nav class="pagination" aria-label={copy.catalog.pagination}>
+    <button class="page-btn" id="previous-page" type="button" aria-label={copy.catalog.previous}>
       ←
     </button>
-    <span id="page-status">Página 1 de 1</span>
-    <button class="page-btn" id="next-page" type="button" aria-label="Página siguiente">→</button>
+    <span id="page-status">{copy.catalog.page(1, 1)}</span>
+    <button class="page-btn" id="next-page" type="button" aria-label={copy.catalog.next}>→</button>
   </nav>
 </section>

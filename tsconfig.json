@@ -13,7 +13,9 @@
       "stores/*": ["./src/stores/*"],
       "styles/*": ["./src/styles/*"],
       "ui/*": ["./src/ui/*"],
-      "utils/*": ["./src/utils/*"]
+      "utils/*": ["./src/utils/*"],
+      "views/*": ["./src/views/*"],
+      "i18n": ["./src/i18n/index.ts"]
     }
   },
   "exclude": ["dist"]

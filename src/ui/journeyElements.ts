@@ -1,18 +1,11 @@
+import { currentLocale, localizedPath, locationTypeLabel, msg } from 'i18n';
 import type { Character, Episode, Location } from 'models/catalog';
-import {
-  type Reservation,
-  ReservationStatus,
-  riskClassNames,
-  riskLabels,
-  tripTypeLabels,
-} from 'models/reservation';
+import { type Reservation, ReservationStatus, riskClassNames } from 'models/reservation';
 import type { ApiErrorView } from 'services/portalTripApiError';
 import { createElement, createFragment, createImage } from 'ui/dom';
 
-const UNKNOWN_PLACE = 'lugar desconocido';
-
 function placeName(reference: Character['origin']): string {
-  return reference?.name ?? UNKNOWN_PLACE;
+  return reference?.name ?? msg().journey.unknownPlace;
 }
 
 type RelationKind = 'residents' | 'episodes';
@@ -73,16 +66,10 @@ export function createCharacterStory(
       );
     });
   } else {
-    history.append(
-      createElement(
-        'li',
-        {},
-        createElement('b', { text: 'Sin registros de episodios recuperados' }),
-      ),
-    );
+    history.append(createElement('li', {}, createElement('b', { text: msg().journey.noEpisodes })));
   }
 
-  const profileImage = createImage(character.image, `Retrato de ${character.name}`);
+  const profileImage = createImage(character.image, msg().journey.portrait(character.name));
   const profile = createElement(
     'div',
     { className: 'story-profile' },
@@ -99,19 +86,24 @@ export function createCharacterStory(
     'p',
     { className: 'character-story' },
     createElement('b', { text: character.name }),
-    ` se originó en ${placeName(character.origin)}. Su última señal conocida proviene de ${placeName(character.location)} y aparece en ${character.episodeIds.length} registros de aventuras.`,
+    msg().journey.story(
+      character.name,
+      placeName(character.origin),
+      placeName(character.location),
+      character.episodeIds.length,
+    ),
   );
   const details = createElement(
     'dl',
     {},
-    createDefinition('Origen', placeName(character.origin)),
-    createDefinition('Ubicación actual', placeName(character.location)),
-    createDefinition('Género', character.gender),
+    createDefinition(msg().journey.origin, placeName(character.origin)),
+    createDefinition(msg().journey.currentLocation, placeName(character.location)),
+    createDefinition(msg().journey.gender, character.gender),
   );
   const episodeHistory = createElement(
     'div',
     { className: 'episode-history' },
-    createElement('span', { text: 'Primeros registros en la serie' }),
+    createElement('span', { text: msg().journey.firstRecords }),
     history,
   );
   return createElement(
@@ -130,7 +122,7 @@ export function createRelatedResident(character: Character, index: number): HTML
     'button',
     {
       className: `related-resident${index >= 12 ? ' relation-extra' : ''}`,
-      attrs: { type: 'button', 'aria-label': `Ver información de ${character.name}` },
+      attrs: { type: 'button', 'aria-label': msg().journey.viewCharacter(character.name) },
       dataset: { characterId: character.id },
     },
     createElement(
@@ -150,7 +142,7 @@ export function createRelatedResident(character: Character, index: number): HTML
       'strong',
       {},
       character.episodeIds.length,
-      createElement('small', { text: 'episodios' }),
+      createElement('small', { text: msg().journey.episodes }),
     ),
   );
 }
@@ -165,7 +157,7 @@ export function createRelatedEpisode(
     'button',
     {
       className: `related-episode${index >= 12 ? ' relation-extra' : ''}`,
-      attrs: { type: 'button', 'aria-label': `Ver información del capítulo ${episode.name}` },
+      attrs: { type: 'button', 'aria-label': msg().journey.viewEpisode(episode.name) },
       dataset: { episodeId: episode.id },
     },
     createElement('span', { text: episode.code }),
@@ -179,7 +171,7 @@ export function createRelatedEpisode(
       'strong',
       {},
       relatedResidents,
-      createElement('small', { text: `residente${relatedResidents === 1 ? '' : 's'}` }),
+      createElement('small', { text: msg().journey.resident(relatedResidents) }),
     ),
   );
 }
@@ -192,7 +184,7 @@ export function createCharacterModal(
   const episodes = character.episodeIds
     .map((id) => episodeMap.get(id))
     .filter((item): item is Episode => Boolean(item));
-  const portraitImage = createImage(character.image, `Retrato de ${character.name}`);
+  const portraitImage = createImage(character.image, msg().journey.portrait(character.name));
   const fragment = createFragment(
     createElement(
       'div',
@@ -207,7 +199,7 @@ export function createCharacterModal(
         'div',
         {},
         createStatus(character.status),
-        createElement('p', { className: 'modal-kicker', text: 'ARCHIVO DE PERSONAJE' }),
+        createElement('p', { className: 'modal-kicker', text: msg().journey.characterFile }),
         createElement('h2', { id: 'modal-title', text: character.name }),
         createElement('p', { text: characterDescription(character) }),
       ),
@@ -215,10 +207,10 @@ export function createCharacterModal(
     createElement(
       'dl',
       { className: 'modal-data' },
-      createDefinition('Origen', placeName(character.origin)),
-      createDefinition('Ubicación actual', placeName(character.location)),
-      createDefinition('Género', character.gender),
-      createDefinition('Episodios', character.episodeIds.length),
+      createDefinition(msg().journey.origin, placeName(character.origin)),
+      createDefinition(msg().journey.currentLocation, placeName(character.location)),
+      createDefinition(msg().journey.gender, character.gender),
+      createDefinition(msg().journey.episodeCount, character.episodeIds.length),
     ),
   );
 
@@ -236,17 +228,17 @@ export function createCharacterModal(
       );
     });
   } else {
-    list.append(createElement('p', { text: 'No se recuperaron detalles de sus episodios.' }));
+    list.append(createElement('p', { text: msg().journey.noEpisodeDetails }));
   }
   const related = createElement(
     'div',
     { className: 'modal-related-list' },
-    createElement('span', { text: 'CAPÍTULOS REGISTRADOS' }),
+    createElement('span', { text: msg().journey.registeredChapters }),
     list,
   );
   if (episodes.length > 8)
     related.append(
-      createElement('small', { text: `+ ${episodes.length - 8} capítulos adicionales` }),
+      createElement('small', { text: msg().journey.extraChapters(episodes.length - 8) }),
     );
   fragment.append(related);
   return fragment;
@@ -260,16 +252,16 @@ export function createEpisodeModal(episode: Episode, residents: Character[]): Do
       'div',
       { className: 'modal-episode-hero' },
       createElement('span', { text: episode.code }),
-      createElement('p', { className: 'modal-kicker', text: 'ARCHIVO DE CAPÍTULO' }),
+      createElement('p', { className: 'modal-kicker', text: msg().journey.episodeFile }),
       createElement('h2', { id: 'modal-title', text: episode.name }),
-      createElement('p', { text: `Emitido el ${episode.airDate}` }),
+      createElement('p', { text: msg().journey.aired(episode.airDate) }),
     ),
     createElement(
       'dl',
       { className: 'modal-data episode-data' },
-      createDefinition('Código', episode.code),
-      createDefinition('Personajes totales', episode.characterIds.length),
-      createDefinition('Residentes relacionados', relatedResidents.length),
+      createDefinition(msg().journey.code, episode.code),
+      createDefinition(msg().journey.totalCharacters, episode.characterIds.length),
+      createDefinition(msg().journey.relatedResidents, relatedResidents.length),
     ),
   );
   const cards = createElement('div', { className: 'modal-residents' });
@@ -292,15 +284,13 @@ export function createEpisodeModal(episode: Episode, residents: Character[]): Do
       );
     });
   } else {
-    cards.append(
-      createElement('p', { text: 'No aparecen residentes del destino en este capítulo.' }),
-    );
+    cards.append(createElement('p', { text: msg().journey.noResidentsInEpisode }));
   }
   fragment.append(
     createElement(
       'div',
       { className: 'modal-related-list' },
-      createElement('span', { text: 'RESIDENTES DEL DESTINO EN ESTE CAPÍTULO' }),
+      createElement('span', { text: msg().journey.residentsInEpisode }),
       cards,
     ),
   );
@@ -363,7 +353,7 @@ function createRelationsBlock(
     block.append(
       createElement('button', {
         className: 'relation-toggle',
-        text: `Mostrar los ${total} ${kind === 'episodes' ? 'capítulos' : 'personajes'} ↓`,
+        text: msg().journey.showAll(total, kind),
         attrs: { type: 'button' },
         dataset: { expandRelation: kind, total },
       }),
@@ -392,9 +382,11 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
   const episodeMap = new Map(episodes.map((episode) => [episode.id, episode]));
   const residentIds = new Set(residents.map((resident) => resident.id));
 
+  const copy = msg().journey;
+  const labels = msg().labels;
   const collage = createElement('div', {
     className: 'destination-collage',
-    attrs: { 'aria-label': `Residentes conocidos de ${destination.name}` },
+    attrs: { 'aria-label': copy.collage(destination.name) },
   });
   if (residents.length) {
     residents.slice(0, 5).forEach((resident, index) => {
@@ -406,7 +398,7 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
         'div',
         { className: 'uncharted-destination' },
         '◎',
-        createElement('span', { text: 'Territorio sin residentes conocidos' }),
+        createElement('span', { text: copy.uncharted }),
       ),
     );
   }
@@ -414,8 +406,8 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
     createElement(
       'span',
       { className: 'destination-label' },
-      createElement('b', { text: destination.type }),
-      `${destination.residentIds.length} residentes registrados`,
+      createElement('b', { text: locationTypeLabel(destination.type) }),
+      ` ${copy.registeredResidents(destination.residentIds.length)}`,
     ),
   );
 
@@ -428,21 +420,21 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
         { className: 'journey-hero-copy' },
         createElement('span', {
           className: 'journey-code',
-          text: `EXPEDICIÓN ${reservation.number}`,
+          text: copy.expedition(reservation.number),
         }),
         createElement(
           'h1',
           {},
-          'Rumbo a ',
+          copy.headingTo,
           createElement('em', { text: reservation.destination.name }),
         ),
         createElement('p', {
-          text: `${reservation.passengerName}, el portal está listo. Viajarás con ${data.teamNames} hacia ${destination.dimension}.`,
+          text: copy.ready(reservation.passengerName, data.teamNames, destination.dimension),
         }),
         createElement(
           'div',
           { className: 'journey-actions' },
-          createElement('a', { text: 'Abrir bitácora ↓', attrs: { href: '#bitacora' } }),
+          createElement('a', { text: copy.openLog, attrs: { href: '#bitacora' } }),
           createElement('span', { text: data.date }),
         ),
       ),
@@ -450,50 +442,48 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
     ),
     createElement(
       'section',
-      { className: 'mission-strip', attrs: { 'aria-label': 'Resumen de la misión' } },
-      createMissionItem('Destino', destination.name),
-      createMissionItem('Dimensión', destination.dimension),
+      { className: 'mission-strip', attrs: { 'aria-label': copy.mission } },
+      createMissionItem(copy.destination, destination.name),
+      createMissionItem(copy.dimension, destination.dimension),
       createMissionItem(
-        'Riesgo',
-        riskLabels[reservation.quote.risk],
+        copy.risk,
+        labels.risk[reservation.quote.risk],
         `mission-risk ${riskClassNames[reservation.quote.risk]}`,
       ),
-      createMissionItem('Inversión', data.formattedTotal),
+      createMissionItem(copy.investment, data.formattedTotal),
     ),
   );
 
   const travelLog = createElement(
     'section',
     { className: 'travel-log', id: 'bitacora' },
-    createLogHeading(
-      'BITÁCORA EN VIVO',
-      'La historia de tu expedición',
-      'Los datos de personajes y episodios se consultaron al abrir este portal.',
-    ),
+    createLogHeading(copy.logKicker, copy.logTitle, copy.logCopy),
     createElement(
       'div',
       { className: 'timeline' },
       createTimelineStep(
         '01',
-        'Preparación',
-        `Portal calibrado hacia ${destination.name}`,
-        `Tu grupo cruza el control interdimensional con ${reservation.passengers} pasajero${reservation.passengers === 1 ? '' : 's'} y un plan ${tripTypeLabels[reservation.tripType].toLowerCase()}.`,
+        copy.prep,
+        copy.portalCalibrated(destination.name),
+        copy.prepCopy(reservation.passengers, labels.tripType[reservation.tripType]),
       ),
       createTimelineStep(
         '02',
-        'Cruce de portal',
-        `Entrada a ${destination.dimension}`,
-        `${destination.name} está clasificado como ${destination.type}. La agencia registra un nivel de riesgo ${riskLabels[reservation.quote.risk].toLowerCase()} para esta coordenada.`,
+        copy.crossing,
+        copy.entry(destination.dimension),
+        copy.crossingCopy(
+          destination.name,
+          locationTypeLabel(destination.type),
+          labels.risk[reservation.quote.risk],
+        ),
       ),
       createTimelineStep(
         '03',
-        'Encuentro',
+        copy.encounter,
         destination.residentIds.length
-          ? `${destination.residentIds.length} señales residentes detectadas`
-          : 'Silencio total en el destino',
-        destination.residentIds.length
-          ? 'Los retratos de la zona fueron recuperados desde el catálogo de residentes de la ubicación.'
-          : 'No existen residentes registrados; el seguro y los protocolos de retorno permanecen activos.',
+          ? copy.signals(destination.residentIds.length)
+          : copy.silence,
+        destination.residentIds.length ? copy.portraitsRecovered : copy.noResidentsInsured,
       ),
     ),
   );
@@ -508,7 +498,7 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
     residentsGrid.append(
       createElement('div', {
         className: 'relation-empty',
-        text: 'No existen residentes registrados para este destino.',
+        text: copy.noResidents,
       }),
     );
   const episodesGrid = createElement('div', { className: 'related-episodes-grid' });
@@ -520,13 +510,13 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
     episodesGrid.append(
       createElement('div', {
         className: 'relation-empty',
-        text: 'No se encontraron capítulos relacionados.',
+        text: copy.noRelatedEpisodes,
       }),
     );
 
   const relationDescription = document.createDocumentFragment();
   relationDescription.append(
-    'Usuarios vinculados directamente por ',
+    copy.linkedBy,
     createElement('code', { text: 'location.residentIds' }),
   );
   fragment.append(
@@ -537,9 +527,9 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
         'div',
         { className: 'relations-heading' },
         createLogHeading(
-          'CONEXIONES DEL DESTINO',
-          'Personajes y capítulos relacionados',
-          `La relación se obtiene siguiendo los residentes de ${destination.name} y los episodios de cada personaje.`,
+          copy.connections,
+          copy.connectionsTitle,
+          copy.connectionsCopy(destination.name),
         ),
         createElement(
           'div',
@@ -548,27 +538,27 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
             'div',
             {},
             createElement('b', { text: residents.length }),
-            createElement('span', { text: 'personajes' }),
+            createElement('span', { text: copy.characters }),
           ),
           createElement(
             'div',
             {},
             createElement('b', { text: relatedEpisodes.length }),
-            createElement('span', { text: 'capítulos' }),
+            createElement('span', { text: copy.chapters }),
           ),
         ),
       ),
       createRelationsBlock(
         'residents',
-        'Personajes residentes',
+        copy.residentCharacters,
         relationDescription,
         residentsGrid,
         residents.length,
       ),
       createRelationsBlock(
         'episodes',
-        'Capítulos conectados',
-        document.createTextNode('Episodios donde aparece al menos un residente del destino'),
+        copy.connectedChapters,
+        document.createTextNode(copy.connectedHint),
         episodesGrid,
         relatedEpisodes.length,
       ),
@@ -585,16 +575,17 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
       createElement(
         'div',
         { className: 'journey-empty' },
-        createElement('b', { text: 'Esta expedición viaja sin personajes' }),
-        createElement('p', {
-          text: 'Puedes volver y crear otra reserva seleccionando hasta tres acompañantes vivos.',
+        createElement('b', { text: copy.noCrewTitle }),
+        createElement('p', { text: copy.noCrewCopy }),
+        createElement('a', {
+          text: copy.anotherBooking,
+          attrs: { href: localizedPath(currentLocale(), '/#reserva') },
         }),
-        createElement('a', { text: 'Crear otra reserva', attrs: { href: '/#reserva' } }),
       ),
     );
   const completeButton = createElement('button', {
     className: 'journey-complete',
-    text: isCompleted ? 'Viaje completado ✓' : 'Completar viaje ✓',
+    text: isCompleted ? copy.completed : copy.complete,
     attrs: { type: 'button' },
     dataset: { completeJourney: reservation.id },
   });
@@ -604,11 +595,7 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
     createElement(
       'section',
       { className: 'crew-section' },
-      createLogHeading(
-        'ARCHIVO DE PERSONAJES',
-        'Conoce a tu equipo',
-        'Origen, ubicación actual y aventuras registradas por la API.',
-      ),
+      createLogHeading(copy.crewKicker, copy.crewTitle, copy.crewCopy),
       storyGrid,
     ),
     createElement(
@@ -619,24 +606,25 @@ export function createJourneyView(data: JourneyViewData): DocumentFragment {
         dataset: { journeyFinale: '' },
       },
       createElement('span', {
-        text: isCompleted ? 'EXPEDICIÓN COMPLETADA' : 'PORTAL ESTABLE',
+        text: isCompleted ? copy.finaleDone : copy.finaleLive,
         dataset: { finaleKicker: '' },
       }),
       createElement('h2', {
-        text: isCompleted ? 'Viaje completado con éxito.' : 'Tu historia ya está en marcha.',
+        text: isCompleted ? copy.finaleDoneTitle : copy.finaleLiveTitle,
         dataset: { finaleTitle: '' },
       }),
       createElement('p', {
-        text: isCompleted
-          ? 'La expedición quedó registrada como completada en la Ciudadela.'
-          : 'Cuando regreses del portal, completa el viaje para cerrar la expedición.',
+        text: isCompleted ? copy.finaleDoneCopy : copy.finaleLiveCopy,
         dataset: { finaleCopy: '' },
       }),
       createElement(
         'div',
         { className: 'journey-finale-actions' },
         completeButton,
-        createElement('a', { text: 'Volver a la agencia →', attrs: { href: '/' } }),
+        createElement('a', {
+          text: copy.backAgency,
+          attrs: { href: localizedPath(currentLocale(), '/') },
+        }),
       ),
     ),
   );
@@ -648,7 +636,7 @@ export function createJourneyError(
   action?: HTMLElement,
 ): DocumentFragment {
   const isApiError = typeof error !== 'string';
-  const title = isApiError ? error.title : 'El portal no pudo abrirse';
+  const title = isApiError ? error.title : msg().journey.openFailed;
   const message = isApiError ? error.message : error;
   const content = createElement(
     'div',
@@ -661,7 +649,7 @@ export function createJourneyError(
       createElement('span', {
         className:
           'rounded-full border border-[#f38c75]/30 bg-[#f38c75]/10 px-3 py-1 font-mono text-[11px] font-bold tracking-[.12em] text-[#f38c75]',
-        text: `CÓDIGO · ${error.code}`,
+        text: msg().errors.panel.code(error.code),
       }),
     createElement('h1', { text: title }),
     createElement('p', { text: message }),
@@ -678,7 +666,7 @@ export function createJourneyError(
     actions.append(
       createElement('button', {
         className: 'btn btn-primary min-h-[40px] text-[12px]',
-        text: 'Reintentar salto',
+        text: msg().journey.retryJump,
         attrs: { type: 'button' },
         dataset: { retryJourney: 'true' },
       }),
@@ -686,8 +674,8 @@ export function createJourneyError(
   actions.append(
     createElement('a', {
       className: 'btn btn-ghost min-h-[40px] text-[12px]',
-      text: 'Volver a mis reservas',
-      attrs: { href: '/' },
+      text: msg().journey.backReservations,
+      attrs: { href: localizedPath(currentLocale(), '/') },
     }),
   );
   content.append(actions);

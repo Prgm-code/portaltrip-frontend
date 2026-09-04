@@ -1,12 +1,16 @@
 ---
 import PortalLogo from 'components/PortalLogo.astro';
+import { localizedPath, messages, resolveAstroLocale } from 'i18n';
+
+const locale = resolveAstroLocale(Astro.currentLocale, Astro.url.pathname);
+const copy = messages[locale];
 ---
 
 <footer class="site-footer">
-  <PortalLogo class="opacity-80" />
-  <p>Viajes interdimensionales desde la Tierra C-137 · Catálogo servido por PortalTrip API</p>
+  <PortalLogo class="opacity-80" href={localizedPath(locale, '/')} />
+  <p>{copy.footer.blurb}</p>
   <div class="credit-chip">
-    <span>Una experiencia creada para</span>
+    <span>{copy.footer.createdFor}</span>
     <span class="logo-plate">
       <img
         src="https://desafiolatam.com/logo-real.png"

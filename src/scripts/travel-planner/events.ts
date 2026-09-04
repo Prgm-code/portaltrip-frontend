@@ -1,3 +1,4 @@
+import { msg } from 'i18n';
 import { PlannerView } from 'models/reservation';
 import { setPassportMode } from 'scripts/passport';
 import { SHOW_RESERVATIONS_EVENT } from 'scripts/session-hud';
@@ -35,7 +36,7 @@ function persistFormDraft(): void {
   travelStore.getState().setDraft(readDraft());
 }
 
-function chooseDestination(id: number, message = 'Destino añadido a tu ruta'): void {
+function chooseDestination(id: number, message = msg().toasts.destinationAdded): void {
   travelStore.getState().setDraft({ destinationId: id, companionIds: [] });
   syncFormFromDraft();
   updateCompanions(id);
@@ -76,7 +77,7 @@ function bindSearchDeck(): void {
     event.preventDefault();
     const destinationId = Number(element<HTMLSelectElement>('#deck-destination').value);
     if (!destinationId) {
-      showToast('Elige una coordenada de destino para calcular la tarifa', 'neutral');
+      showToast(msg().toasts.pickCoordinate, 'neutral');
       element<HTMLSelectElement>('#deck-destination').focus();
       return;
     }
@@ -84,7 +85,7 @@ function bindSearchDeck(): void {
       travelDate: date.value,
       passengers: Number(passengers.value) || 1,
     });
-    chooseDestination(destinationId, 'Tarifa calculada · revisa tu itinerario');
+    chooseDestination(destinationId, msg().toasts.fareReady);
   });
 }
 
@@ -125,7 +126,7 @@ function bindBookingEvents(bookingForm: HTMLFormElement): void {
     ];
     if (selected.length > MAX_COMPANIONS) {
       checkbox.checked = false;
-      showToast('Puedes elegir hasta tres personajes', 'neutral');
+      showToast(msg().toasts.maxCompanions, 'neutral');
     }
     persistFormDraft();
     renderCompanions();
@@ -231,7 +232,7 @@ export function bindEvents(): boolean {
   const destinationGrid = document.getElementById('destination-grid');
   const reservationsList = document.getElementById('reservations-list');
   if (bookingForm === null || destinationGrid === null || reservationsList === null) {
-    console.error('No fue posible iniciar la aplicación: faltan elementos principales del DOM.');
+    console.error(msg().boot.missingDom);
     return false;
   }
 

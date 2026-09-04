@@ -1,6 +1,12 @@
 ---
 import { IconRoute, IconShieldCheck } from '@tabler/icons-astro';
+import { formatCredits, messages, resolveAstroLocale } from 'i18n';
+import { RiskLevel } from 'models/reservation';
 import 'styles/booking-dynamic.css';
+import { INSURANCE_PRICE } from 'utils/travelRules';
+
+const locale = resolveAstroLocale(Astro.currentLocale, Astro.url.pathname);
+const copy = messages[locale];
 ---
 
 <aside class="booking-card glass" id="reserva">
@@ -9,8 +15,8 @@ import 'styles/booking-dynamic.css';
       <IconRoute size={22} stroke={1.7} />
     </div>
     <div>
-      <span class="section-kicker" data-booking-kicker>Consola de salto · Paso 1 de 2 · Ruta</span>
-      <h2>Diseña tu viaje</h2>
+      <span class="section-kicker" data-booking-kicker>{copy.booking.kickerStep1}</span>
+      <h2>{copy.booking.title}</h2>
     </div>
   </div>
 
@@ -18,22 +24,22 @@ import 'styles/booking-dynamic.css';
     <div id="booking-api-status" class="console-status" aria-live="assertive" hidden></div>
 
     <label class="field">
-      <span class="field-label">Nombre del pasajero</span>
+      <span class="field-label">{copy.booking.passengerName}</span>
       <input
         class="control"
         id="passengerName"
         name="passengerName"
         type="text"
         autocomplete="name"
-        placeholder="Ej: Morty Smith"
+        placeholder={copy.booking.passengerPlaceholder}
         required
       >
     </label>
 
     <label class="field">
-      <span class="field-label">Destino</span>
+      <span class="field-label">{copy.booking.destination}</span>
       <select class="control" id="destinationId" name="destinationId" required>
-        <option value="">Selecciona un destino</option>
+        <option value="">{copy.catalog.selectDestination}</option>
       </select>
     </label>
 
@@ -41,43 +47,45 @@ import 'styles/booking-dynamic.css';
 
     <div class="field-row">
       <label class="field">
-        <span class="field-label">Fecha del viaje</span>
+        <span class="field-label">{copy.booking.travelDate}</span>
         <input class="control" id="travelDate" name="travelDate" type="date" required>
       </label>
       <label class="field">
-        <span class="field-label">Pasajeros</span>
+        <span class="field-label">{copy.booking.passengers}</span>
         <span class="stepper">
-          <button type="button" data-step="-1" aria-label="Restar pasajero">−</button>
+          <button type="button" data-step="-1" aria-label={copy.booking.minusPassenger}>−</button>
           <input id="passengers" name="passengers" type="number" min="1" max="8" value="1" readonly>
-          <button type="button" data-step="1" aria-label="Sumar pasajero">+</button>
+          <button type="button" data-step="1" aria-label={copy.booking.plusPassenger}>+</button>
         </span>
       </label>
     </div>
 
     <fieldset class="fieldset">
       <legend>
-        <span>Elige tu equipo <small class="legend-note">Solo personajes vivos</small></span>
+        <span>{copy.booking.crew} <small class="legend-note">{copy.booking.crewNote}</small></span>
         <b id="companion-status">0 / 3</b>
       </legend>
       <div id="companion-grid" class="companion-grid" aria-live="polite">
-        <p>Selecciona un destino para descubrir acompañantes.</p>
+        <p>{copy.booking.crewEmpty}</p>
       </div>
     </fieldset>
 
     <fieldset class="fieldset">
-      <legend><span>Tipo de viaje</span></legend>
+      <legend><span>{copy.booking.tripType}</span></legend>
       <div class="choice-grid">
         <label class="choice">
           <input type="radio" name="tripType" value="express" checked>
-          <span><b>Express</b><small>Ida directa</small></span>
+          <span><b>{copy.booking.express}</b><small>{copy.booking.expressHint}</small></span>
         </label>
         <label class="choice">
           <input type="radio" name="tripType" value="exploration">
-          <span><b>Exploración</b><small>+30% · flexible</small></span>
+          <span
+            ><b>{copy.booking.exploration}</b><small>{copy.booking.explorationHint}</small></span
+          >
         </label>
         <label class="choice">
           <input type="radio" name="tripType" value="premium">
-          <span><b>Premium</b><small>+65% · VIP</small></span>
+          <span><b>{copy.booking.premium}</b><small>{copy.booking.premiumHint}</small></span>
         </label>
       </div>
     </fieldset>
@@ -88,25 +96,28 @@ import 'styles/booking-dynamic.css';
         <i class="toggle-track" aria-hidden="true"></i>
       </span>
       <span class="toggle-copy">
-        <b>Seguro interdimensional</b>
-        <small id="insurance-copy">Cobertura ante portales inestables</small>
+        <b>{copy.booking.insurance}</b>
+        <small id="insurance-copy">{copy.booking.insuranceOptional}</small>
       </span>
-      <strong class="toggle-price">+ $190 p/p</strong>
+      <strong class="toggle-price"
+        >+ {formatCredits(INSURANCE_PRICE, locale)} {copy.booking.perPerson}</strong
+      >
     </label>
 
     <label class="field">
-      <span class="field-label">Comentarios <small>Opcional</small></span>
+      <span class="field-label"
+        >{copy.booking.comments} <small>{copy.booking.optional}</small></span
+      >
       <textarea
         class="control"
         id="comments"
         name="comments"
         rows="2"
         maxlength="240"
-        placeholder="¿Alguna petición especial?"
+        placeholder={copy.booking.commentsPlaceholder}
       ></textarea>
     </label>
 
-    <!-- Paso 2: solo para visitantes sin sesión. Se crea la cuenta y se reserva en un clic. -->
     <section
       id="passport-step"
       class="passport-step"
@@ -116,28 +127,28 @@ import 'styles/booking-dynamic.css';
       hidden
     >
       <div class="passport-step-head">
-        <span class="section-kicker">Paso 2 de 2 · Pasaporte</span>
+        <span class="section-kicker">{copy.booking.kickerStep2}</span>
         <h3 id="passport-step-title" data-passport-step-title>
-          Crea tu pasaporte y confirma el salto
+          {copy.booking.stepRegisterTitle}
         </h3>
         <p class="credit-badge" data-register-only>
           <span aria-hidden="true">✦</span>
-          +5.000 créditos de bienvenida
+          {copy.passport.welcomeCredits}
         </p>
       </div>
       <label class="field" data-register-only>
-        <span class="field-label">Nombre completo</span>
+        <span class="field-label">{copy.booking.fullName}</span>
         <input
           class="control"
           id="fullName"
           name="fullName"
           type="text"
           autocomplete="name"
-          placeholder="Como aparecerá en tu pasaporte"
+          placeholder={copy.booking.fullNamePlaceholder}
         >
       </label>
       <label class="field">
-        <span class="field-label">Correo del pasaporte</span>
+        <span class="field-label">{copy.booking.email}</span>
         <input
           class="control"
           id="email"
@@ -148,7 +159,9 @@ import 'styles/booking-dynamic.css';
         >
       </label>
       <label class="field">
-        <span class="field-label">Clave <small>8 caracteres o más</small></span>
+        <span class="field-label"
+          >{copy.booking.password} <small>{copy.booking.passwordHint}</small></span
+        >
         <span class="password-field">
           <input
             class="control"
@@ -160,13 +173,13 @@ import 'styles/booking-dynamic.css';
             maxlength="64"
           >
           <button class="password-toggle" type="button" data-toggle-password aria-pressed="false">
-            Mostrar
+            {copy.booking.showPassword}
           </button>
         </span>
       </label>
       <p class="passport-switch">
         <button type="button" data-passport-switch data-passport-mode="login">
-          ¿Ya tienes pasaporte? Ingresa con tu clave
+          {copy.passport.register.switchLabel}
         </button>
       </p>
     </section>
@@ -175,25 +188,27 @@ import 'styles/booking-dynamic.css';
 
     <div class="quote-grid">
       <div class="quote-tile">
-        <span>Riesgo estimado</span>
-        <strong id="risk-value" class="risk alto"><i></i> Alto</strong>
+        <span>{copy.booking.risk}</span>
+        <strong id="risk-value" class="risk alto"
+          ><i></i> {copy.labels.risk[RiskLevel.HIGH]}</strong
+        >
       </div>
       <div class="quote-tile">
-        <span>Costo del salto</span>
-        <strong id="price-value">US$ 1.200</strong>
+        <span>{copy.booking.jumpCost}</span>
+        <strong id="price-value">{formatCredits(1200, locale)}</strong>
       </div>
       <div class="quote-tile balance-tile" id="balance-tile" hidden>
-        <span>Saldo tras el salto</span>
-        <strong id="balance-value">US$ 0</strong>
+        <span>{copy.booking.balanceAfter}</span>
+        <strong id="balance-value">{formatCredits(0, locale)}</strong>
       </div>
     </div>
 
     <button class="btn btn-primary submit-btn" id="confirm-booking" type="submit">
-      <span>Crear pasaporte y reservar</span><span aria-hidden="true">→</span>
+      <span>{copy.booking.submitRegister}</span><span aria-hidden="true">→</span>
     </button>
     <p class="submit-note">
       <IconShieldCheck size={13} stroke={1.9} aria-hidden="true" />
-      <span>Tu pasaporte se crea en el mismo paso y recibe créditos de bienvenida</span>
+      <span>{copy.booking.noteAnonymous}</span>
     </p>
   </form>
 </aside>

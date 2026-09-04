@@ -1,3 +1,5 @@
+import { msg } from 'i18n';
+
 const ERROR_PREVIEW_PARAM = 'apiError';
 
 /** Categorías que la interfaz usa para presentar cada anomalía. */
@@ -55,34 +57,23 @@ export function throwPreviewError(): void {
   if (typeof window === 'undefined') return;
   const status = Number(new URLSearchParams(window.location.search).get(ERROR_PREVIEW_PARAM));
   if (Number.isInteger(status) && status >= 400 && status <= 599) {
-    throw new PortalTripApiError(`Error HTTP ${status} simulado para revisar la interfaz.`, status);
+    throw new PortalTripApiError(msg().errors.preview(status), status);
   }
 }
 
 // Los valores capturados como unknown se convierten a un error estable y tipado.
 export function normalizeApiError(error: unknown, aborted = false): PortalTripApiError {
   if (aborted) {
-    return new PortalTripApiError(
-      'La API no respondió dentro del tiempo esperado.',
-      408,
-      undefined,
-      error,
-    );
+    return new PortalTripApiError(msg().errors.timeout, 408, undefined, error);
   }
 
   if (error instanceof PortalTripApiError) return error;
 
   if (error instanceof TypeError) {
-    return new PortalTripApiError(
-      'No fue posible conectar con PortalTrip API.',
-      undefined,
-      undefined,
-      error,
-    );
+    return new PortalTripApiError(msg().errors.unreachable, undefined, undefined, error);
   }
 
-  const message =
-    error instanceof Error ? error.message : 'Ocurrió un error inesperado al consultar la API.';
+  const message = error instanceof Error ? error.message : msg().errors.unexpected;
   return new PortalTripApiError(message, undefined, undefined, error);
 }
 
@@ -131,14 +122,15 @@ export function getValidationMessages(error: unknown): string[] {
 export function getApiErrorView(error: unknown): ApiErrorView {
   const apiError = normalizeApiError(error);
   const status = apiError.status;
+  const views = msg().errors.views;
 
   if (status === 400)
     return {
       kind: 'bad-request',
       code: 'HTTP 400',
       status,
-      title: 'Coordenadas incompletas',
-      message: 'La Ciudadela rechazó algunos datos de la petición.',
+      title: views.badRequest.title,
+      message: views.badRequest.message,
       hint: apiError.message,
     };
 
@@ -147,9 +139,9 @@ export function getApiErrorView(error: unknown): ApiErrorView {
       kind: 'unauthorized',
       code: 'HTTP 401',
       status,
-      title: 'Pasaporte vencido',
-      message: 'La Ciudadela ya no reconoce tu sesión.',
-      hint: 'Vuelve a ingresar con tu correo y clave para continuar.',
+      title: views.unauthorized.title,
+      message: views.unauthorized.message,
+      hint: views.unauthorized.hint,
     };
 
   if (status === 403)
@@ -157,9 +149,9 @@ export function getApiErrorView(error: unknown): ApiErrorView {
       kind: 'forbidden',
       code: 'HTTP 403',
       status,
-      title: 'Acceso restringido',
-      message: 'Tu pasaporte no tiene permiso para esta zona del multiverso.',
-      hint: 'Regresa a la agencia y verifica tu cuenta.',
+      title: views.forbidden.title,
+      message: views.forbidden.message,
+      hint: views.forbidden.hint,
     };
 
   if (status === 404)
@@ -167,9 +159,9 @@ export function getApiErrorView(error: unknown): ApiErrorView {
       kind: 'not-found',
       code: 'HTTP 404',
       status,
-      title: 'Dimensión perdida',
-      message: 'La coordenada solicitada desapareció del mapa multiversal o nunca existió.',
-      hint: 'Prueba otro destino o vuelve al catálogo.',
+      title: views.notFound.title,
+      message: views.notFound.message,
+      hint: views.notFound.hint,
     };
 
   if (status === 408)
@@ -177,9 +169,9 @@ export function getApiErrorView(error: unknown): ApiErrorView {
       kind: 'timeout',
       code: 'HTTP 408',
       status,
-      title: 'El portal agotó su tiempo',
-      message: 'La conexión se cerró antes de recibir las coordenadas completas.',
-      hint: 'Recalibra el portal e intenta nuevamente.',
+      title: views.timeout.title,
+      message: views.timeout.message,
+      hint: views.timeout.hint,
     };
 
   if (status === 409)
@@ -187,15 +179,9 @@ export function getApiErrorView(error: unknown): ApiErrorView {
       kind: 'conflict',
       code: 'HTTP 409',
       status,
-      title: isDuplicateAccountError(apiError)
-        ? 'Este correo ya tiene pasaporte'
-        : 'Coordenadas en conflicto',
-      message: isDuplicateAccountError(apiError)
-        ? 'Ya existe una cuenta registrada con ese correo.'
-        : 'La Ciudadela detectó una operación que choca con el estado actual.',
-      hint: isDuplicateAccountError(apiError)
-        ? 'Ingresa con tu clave para continuar la reserva.'
-        : apiError.message,
+      title: isDuplicateAccountError(apiError) ? views.duplicate.title : views.conflict.title,
+      message: isDuplicateAccountError(apiError) ? views.duplicate.message : views.conflict.message,
+      hint: isDuplicateAccountError(apiError) ? views.duplicate.hint : apiError.message,
     };
 
   if (status === 422 && isBalanceError(apiError))
@@ -203,9 +189,9 @@ export function getApiErrorView(error: unknown): ApiErrorView {
       kind: 'balance',
       code: 'HTTP 422',
       status,
-      title: 'Créditos insuficientes',
-      message: 'Tu saldo no alcanza para abrir este portal.',
-      hint: 'Cancela una reserva confirmada para recuperar créditos o elige un salto más económico.',
+      title: views.balance.title,
+      message: views.balance.message,
+      hint: views.balance.hint,
     };
 
   if (status === 422)
@@ -213,8 +199,8 @@ export function getApiErrorView(error: unknown): ApiErrorView {
       kind: 'validation',
       code: 'HTTP 422',
       status,
-      title: 'Protocolo de viaje rechazado',
-      message: 'La Ciudadela detectó una regla de viaje incumplida.',
+      title: views.validation.title,
+      message: views.validation.message,
       hint: getValidationMessages(apiError).join(' ') || apiError.message,
     };
 
@@ -223,9 +209,9 @@ export function getApiErrorView(error: unknown): ApiErrorView {
       kind: 'rate-limit',
       code: 'HTTP 429',
       status,
-      title: 'Demasiados portales abiertos',
-      message: 'La red interdimensional está saturada por exceso de saltos.',
-      hint: 'Vuelve a intentarlo cuando quieras recalibrar el portal.',
+      title: views.rateLimit.title,
+      message: views.rateLimit.message,
+      hint: views.rateLimit.hint,
     };
 
   if (status !== undefined && status >= 500)
@@ -233,26 +219,26 @@ export function getApiErrorView(error: unknown): ApiErrorView {
       kind: 'server',
       code: `HTTP ${status}`,
       status,
-      title: 'La Ciudadela está fuera de servicio',
-      message: 'Los servidores multiversales sufren una anomalía temporal.',
-      hint: 'Tus créditos y reservas están a salvo. Intenta abrir el portal más tarde.',
+      title: views.server.title,
+      message: views.server.message,
+      hint: views.server.hint,
     };
 
   if (status === undefined && apiError.originalError instanceof TypeError)
     return {
       kind: 'network',
-      code: 'SIN SEÑAL',
-      title: 'Se perdió la señal interdimensional',
-      message: 'No logramos contactar con PortalTrip API.',
-      hint: 'Comprueba tu conexión y vuelve a calibrar el portal.',
+      code: views.network.code,
+      title: views.network.title,
+      message: views.network.message,
+      hint: views.network.hint,
     };
 
   return {
     kind: 'unknown',
     code: status ? `HTTP ${status}` : 'ERROR PT-∞',
     status,
-    title: 'Anomalía multiversal inesperada',
-    message: 'Algo alteró la trayectoria de la petición.',
-    hint: 'Intenta nuevamente; si continúa, regresa a la agencia.',
+    title: views.unknown.title,
+    message: views.unknown.message,
+    hint: views.unknown.hint,
   };
 }

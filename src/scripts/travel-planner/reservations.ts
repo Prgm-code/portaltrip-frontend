@@ -1,3 +1,4 @@
+import { formatReservationDate, msg } from 'i18n';
 import { PlannerView } from 'models/reservation';
 import { element } from 'scripts/travel-planner/helpers';
 import { showToast } from 'scripts/travel-planner/notifications';
@@ -11,12 +12,6 @@ import { createLegacyNotice, createLockedReservationsState } from 'ui/authElemen
 import { createElement } from 'ui/dom';
 import { countLegacyReservations, discardLegacyReservations } from 'utils/legacyReservations';
 import { formatBalance, formatCredits } from 'utils/travelRules';
-
-const reservationDateFormatter = new Intl.DateTimeFormat('es-CL', {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-});
 
 let lastError: unknown = null;
 
@@ -41,21 +36,18 @@ export async function loadReservations(): Promise<void> {
 
 async function cancel(id: string, button: HTMLButtonElement): Promise<void> {
   button.disabled = true;
-  button.textContent = 'Cancelando...';
+  button.textContent = msg().reservations.cancelling;
   try {
     const result = await cancelReservation(id);
     travelStore.getState().upsertReservation(result.reservation);
     sessionStore.getState().setBalance(result.remainingBalance);
     renderReservations();
-    showToast(
-      `Reserva cancelada · ${formatBalance(result.reservation.quote.total)} devueltos`,
-      'neutral',
-    );
+    showToast(msg().toasts.cancelled(formatBalance(result.reservation.quote.total)), 'neutral');
   } catch (error) {
     button.disabled = false;
-    button.textContent = 'Cancelar';
+    button.textContent = msg().reservations.cancel;
     const view = getApiErrorView(error);
-    showToast(`${view.title}: ${view.message}`, 'neutral');
+    showToast(msg().toasts.toastPair(view.title, view.message), 'neutral');
   }
 }
 
@@ -72,7 +64,7 @@ function renderLegacyNotice(): void {
     createLegacyNotice(count, () => {
       discardLegacyReservations();
       renderLegacyNotice();
-      showToast('Archivo local descartado', 'neutral');
+      showToast(msg().toasts.legacyDiscarded, 'neutral');
     }),
   );
 }
@@ -92,7 +84,7 @@ export function renderReservations(): void {
         'p',
         { className: 'catalog-status', attrs: { role: 'status' } },
         createElement('span', { className: 'spinner' }),
-        ' Sincronizando tu bitácora con la Ciudadela...',
+        msg().reservations.syncing,
       ),
     );
   } else if (reservationsStatus === 'error') {
@@ -101,12 +93,12 @@ export function renderReservations(): void {
     );
   } else if (!reservations.length) {
     const emptyState = createEmptyState(
-      'Aún no hay viajes en tu bitácora',
-      'Elige un destino del catálogo y confirma tu primera reserva interdimensional.',
+      msg().reservations.emptyTitle,
+      msg().reservations.emptyCopy,
     );
     emptyState.append(
       createElement('button', {
-        text: 'Explorar destinos',
+        text: msg().reservations.explore,
         attrs: { type: 'button' },
         dataset: { goDestinations: '' },
       }),
@@ -115,9 +107,7 @@ export function renderReservations(): void {
   } else {
     list.replaceChildren(
       ...reservations.map((reservation) => {
-        const formattedDate = reservationDateFormatter.format(
-          new Date(`${reservation.travelDate}T12:00:00`),
-        );
+        const formattedDate = formatReservationDate(reservation.travelDate);
         return createReservationItem(
           reservation,
           formattedDate,

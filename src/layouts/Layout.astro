@@ -2,6 +2,13 @@
 import { ClientRouter } from 'astro:transitions';
 import PassportDialog from 'components/PassportDialog.astro';
 import StarField from 'components/StarField.astro';
+import {
+  defaultLocale,
+  localizedPath,
+  messages,
+  resolveAstroLocale,
+  stripLocalePrefix,
+} from 'i18n';
 import 'styles/global.css';
 
 interface Props {
@@ -9,13 +16,23 @@ interface Props {
   description?: string;
 }
 
-const { title = 'Portal Trip — Viajes interdimensionales' } = Astro.props;
-const description =
-  Astro.props.description ?? 'Reserva viajes seguros por todo el multiverso de Rick and Morty.';
+const locale = resolveAstroLocale(Astro.currentLocale, Astro.url.pathname);
+const copy = messages[locale];
+const { title = copy.meta.title } = Astro.props;
+const description = Astro.props.description ?? copy.meta.description;
+const path = stripLocalePrefix(Astro.url.pathname);
+const origin = Astro.url.origin;
+const homeHref = localizedPath(locale, '/');
 ---
 
 <!doctype html>
-<html class="scroll-smooth" lang="es" data-session="anonymous">
+<html
+  class="scroll-smooth"
+  lang={locale}
+  data-session="anonymous"
+  data-locale={locale}
+  data-home={homeHref}
+>
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -24,6 +41,17 @@ const description =
     <meta name="generator" content={Astro.generator}>
     <meta name="description" content={description}>
     <meta name="theme-color" content="#040a07">
+    <link
+      rel="alternate"
+      hreflang={defaultLocale}
+      href={`${origin}${localizedPath(defaultLocale, path)}`}
+    >
+    <link rel="alternate" hreflang="en" href={`${origin}${localizedPath('en', path)}`}>
+    <link
+      rel="alternate"
+      hreflang="x-default"
+      href={`${origin}${localizedPath(defaultLocale, path)}`}
+    >
     <title>{title}</title>
     <ClientRouter />
   </head>

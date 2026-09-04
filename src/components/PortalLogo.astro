@@ -1,5 +1,6 @@
 ---
 import { IconUniverse } from '@tabler/icons-astro';
+import { localizedPath, messages, resolveAstroLocale } from 'i18n';
 
 interface Props {
   href?: string;
@@ -8,13 +9,14 @@ interface Props {
   shared?: boolean;
 }
 
-const { href = '/', class: className = '', shared = false } = Astro.props;
+const locale = resolveAstroLocale(Astro.currentLocale, Astro.url.pathname);
+const { href = localizedPath(locale, '/'), class: className = '', shared = false } = Astro.props;
 ---
 
 <a
   class:list={['portal-logo', shared && 'shared', className]}
   href={href}
-  aria-label="Portal Trip, volver al inicio"
+  aria-label={messages[locale].brand.home}
 >
   <span class="portal-logo-mark" aria-hidden="true">
     <span class="portal-logo-glow"></span>

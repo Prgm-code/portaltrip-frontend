@@ -1,18 +1,22 @@
 ---
+import { messages, resolveAstroLocale } from 'i18n';
+
 interface Props {
   class?: string;
   label?: string;
 }
 
-const { class: className = '', label = 'Uplink Ciudadela' } = Astro.props;
+const locale = resolveAstroLocale(Astro.currentLocale, Astro.url.pathname);
+const { class: className = '', label = messages[locale].uplink.label } = Astro.props;
 ---
 
 <span class:list={['uplink', className]} data-uplink="online" role="status">
   <i aria-hidden="true"></i>
   <span>{label}</span>
-  <span data-uplink-state>· en línea</span>
+  <span data-uplink-state>{messages[locale].uplink.online}</span>
 </span>
 <script>
+import { msg } from 'i18n';
 import { checkHealth } from 'services/portalTripApi';
 
 // El HUD combina la señal del navegador con el healthcheck real de PortalTrip API.
@@ -21,15 +25,12 @@ let apiOnline = true;
 function paintUplink(): void {
   const browserOnline = navigator.onLine;
   const online = browserOnline && apiOnline;
+  const copy = msg().uplink;
   document.querySelectorAll<HTMLElement>('[data-uplink]').forEach((node) => {
     node.dataset.uplink = online ? 'online' : 'offline';
     const state = node.querySelector('[data-uplink-state]');
     if (state)
-      state.textContent = online
-        ? '· en línea'
-        : browserOnline
-          ? '· sin señal de la Ciudadela'
-          : '· sin conexión';
+      state.textContent = online ? copy.online : browserOnline ? copy.citadelDown : copy.offline;
   });
 }
 

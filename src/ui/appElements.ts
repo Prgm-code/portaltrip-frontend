@@ -1,12 +1,11 @@
+import { currentLocale, journeyPath, locationTypeLabel, msg } from 'i18n';
 import type { Character, Location } from 'models/catalog';
 import {
   type Reservation,
   ReservationStatus,
   type RiskLevel,
   riskClassNames,
-  riskLabels,
   statusClassNames,
-  statusLabels,
 } from 'models/reservation';
 import { createElement, createImage, createSvg } from 'ui/dom';
 
@@ -24,7 +23,7 @@ function createRiskElement(risk: RiskLevel): HTMLSpanElement {
     'span',
     { className: riskClassName(risk) },
     createElement('i'),
-    riskLabels[risk],
+    msg().labels.risk[risk],
   );
 }
 
@@ -47,12 +46,12 @@ function createDestinationArtwork(location: Location, residents: Character[]): H
     );
     residents.slice(0, 3).forEach((resident) => {
       const image = createImage(resident.image);
-      image.title = `${resident.name}, residente de ${location.name}`;
+      image.title = msg().catalog.residentTitle(resident.name, location.name);
       artwork.append(image);
     });
     artwork.append(
       createElement('span', { className: 'photo-shade' }),
-      createElement('span', { className: 'photo-label', text: 'Vista de residentes' }),
+      createElement('span', { className: 'photo-label', text: msg().catalog.residentsPreview }),
       coordinate,
     );
     return artwork;
@@ -78,7 +77,11 @@ export function createFeaturedCard(
 ): HTMLElement {
   const book = createElement(
     'button',
-    { text: 'Reservar ', attrs: { type: 'button' }, dataset: { bookLocation: location.id } },
+    {
+      text: msg().featured.book,
+      attrs: { type: 'button' },
+      dataset: { bookLocation: location.id },
+    },
     createElement('span', { text: '→', attrs: { 'aria-hidden': 'true' } }),
   );
   return createElement(
@@ -91,7 +94,7 @@ export function createFeaturedCard(
       createElement(
         'div',
         { className: 'card-topline' },
-        createElement('span', { text: location.type || 'Desconocido' }),
+        createElement('span', { text: locationTypeLabel(location.type) }),
         createRiskElement(risk),
       ),
       createElement('h3', { text: location.name }),
@@ -102,7 +105,7 @@ export function createFeaturedCard(
         createElement(
           'div',
           {},
-          createElement('span', { text: 'Desde' }),
+          createElement('span', { text: msg().featured.from }),
           createElement('strong', { text: formattedFare }),
         ),
         book,
@@ -142,7 +145,7 @@ export function createDestinationCard(
   const chooseButton = createElement(
     'button',
     {
-      text: 'Elegir destino ',
+      text: msg().catalog.choose,
       attrs: { type: 'button' },
       dataset: { bookLocation: location.id },
     },
@@ -163,7 +166,7 @@ export function createDestinationCard(
     createElement(
       'div',
       { className: 'card-topline' },
-      createElement('span', { text: location.type || 'Desconocido' }),
+      createElement('span', { text: locationTypeLabel(location.type) }),
       createRiskElement(risk),
     ),
     createElement('h3', { text: location.name }),
@@ -175,7 +178,7 @@ export function createDestinationCard(
         'span',
         {},
         createElement('b', { text: location.residentIds.length }),
-        ' residentes',
+        ` ${msg().catalog.residentWord(location.residentIds.length)}`,
       ),
       chooseButton,
     ),
@@ -228,7 +231,7 @@ export function createReservationItem(
     createElement('span', { text: reservation.number }),
     createElement('span', { text: formattedDate }),
     createElement('span', {
-      text: `${reservation.passengers} pasajero${reservation.passengers === 1 ? '' : 's'}`,
+      text: msg().reservations.passengers(reservation.passengers),
     }),
   );
   const team = createElement('div', { className: 'reservation-team' });
@@ -239,7 +242,7 @@ export function createReservationItem(
       team.append(image);
     });
   } else {
-    team.append(createElement('span', { text: 'Viaje sin equipo' }));
+    team.append(createElement('span', { text: msg().reservations.noCrew }));
   }
 
   const side = createElement(
@@ -247,7 +250,7 @@ export function createReservationItem(
     { className: 'reservation-side' },
     createElement('span', {
       className: `status ${statusClassNames[reservation.status]}`,
-      text: statusLabels[reservation.status],
+      text: msg().labels.status[reservation.status],
     }),
     createElement('strong', { text: formattedTotal }),
   );
@@ -258,15 +261,18 @@ export function createReservationItem(
     side.append(
       createElement('a', {
         className: 'start-trip',
-        text: `${reservation.status === ReservationStatus.IN_PROGRESS ? 'Continuar viaje' : 'Iniciar viaje'} →`,
-        attrs: { href: `/viaje?id=${encodeURIComponent(reservation.id)}` },
+        text:
+          reservation.status === ReservationStatus.IN_PROGRESS
+            ? msg().reservations.continue
+            : msg().reservations.start,
+        attrs: { href: journeyPath(currentLocale(), reservation.id) },
       }),
     );
     // Solo una reserva confirmada puede cancelarse y devolver sus créditos.
     if (reservation.status === ReservationStatus.CONFIRMED) {
       side.append(
         createElement('button', {
-          text: 'Cancelar',
+          text: msg().reservations.cancel,
           attrs: { type: 'button' },
           dataset: { cancelReservation: reservation.id },
         }),
@@ -276,8 +282,8 @@ export function createReservationItem(
     side.append(
       createElement('a', {
         className: 'start-trip completed-trip',
-        text: 'Ver viaje →',
-        attrs: { href: `/viaje?id=${encodeURIComponent(reservation.id)}` },
+        text: msg().reservations.view,
+        attrs: { href: journeyPath(currentLocale(), reservation.id) },
       }),
     );
   }
@@ -295,7 +301,10 @@ export function createToast(message: string, kind: ToastKind): HTMLDivElement {
 
 export function setRiskContent(target: HTMLElement, risk: RiskLevel): void {
   target.className = riskClassName(risk);
-  target.replaceChildren(createElement('i'), document.createTextNode(` ${riskLabels[risk]}`));
+  target.replaceChildren(
+    createElement('i'),
+    document.createTextNode(` ${msg().labels.risk[risk]}`),
+  );
 }
 
 export function appendDestinationHint(target: HTMLElement, location: Location): void {
@@ -307,7 +316,7 @@ export function appendDestinationHint(target: HTMLElement, location: Location): 
   );
   target.replaceChildren(
     route,
-    createElement('span', { text: `${location.residentIds.length} residentes` }),
+    createElement('span', { text: msg().catalog.residents(location.residentIds.length) }),
   );
 }
 
@@ -316,5 +325,5 @@ export function appendFormErrors(target: HTMLElement, errors: string[]): void {
   errors.forEach((error) => {
     list.append(createElement('li', { text: error }));
   });
-  target.replaceChildren(createElement('b', { text: 'Revisa estos datos:' }), list);
+  target.replaceChildren(createElement('b', { text: msg().booking.review }), list);
 }

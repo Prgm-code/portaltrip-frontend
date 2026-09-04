@@ -1,10 +1,13 @@
+import { msg } from 'i18n';
 import type { PassportInput } from 'models/auth';
 import { type Character, CharacterStatus, type Location } from 'models/catalog';
 import { type Quote, type ReservationDraft, RiskLevel, type TripType } from 'models/reservation';
 
+export { formatBalance, formatCredits } from 'i18n';
+
 // Las reglas son idénticas a QuoteCalculator en el backend; el servidor es la autoridad.
 const BASE_PRICE = 1200;
-const INSURANCE_PRICE = 190;
+export const INSURANCE_PRICE = 190;
 /** Créditos que la API regala al crear una cuenta (REGISTRATION_CREDIT). */
 export const WELCOME_CREDIT = 5000;
 export const MIN_PASSWORD_LENGTH = 8;
@@ -62,20 +65,19 @@ export function validateReservation(
   today.setHours(0, 0, 0, 0);
   const travelDate = new Date(`${draft.travelDate}T00:00:00`);
 
-  if (draft.passengerName.trim().length < 3)
-    errors.push('Ingresa el nombre completo del pasajero.');
-  if (!draft.destinationId) errors.push('Selecciona un destino.');
+  const copy = msg().validation;
+  if (draft.passengerName.trim().length < 3) errors.push(copy.passengerName);
+  if (!draft.destinationId) errors.push(copy.destination);
   if (!draft.travelDate || Number.isNaN(travelDate.getTime()) || travelDate <= today) {
-    errors.push('La fecha del viaje debe ser futura.');
+    errors.push(copy.travelDate);
   }
-  if (draft.passengers < 1 || draft.passengers > 8)
-    errors.push('La reserva admite entre 1 y 8 pasajeros.');
-  if (draft.companionIds.length > 3) errors.push('Puedes viajar con un máximo de tres personajes.');
+  if (draft.passengers < 1 || draft.passengers > 8) errors.push(copy.passengers);
+  if (draft.companionIds.length > 3) errors.push(copy.companions);
   if (companions.some((companion) => companion.status !== CharacterStatus.ALIVE)) {
-    errors.push('Todos los personajes seleccionados deben estar vivos.');
+    errors.push(copy.alive);
   }
   if (requiresInsurance(destination) && !draft.insurance) {
-    errors.push('Los destinos de dimensión desconocida exigen seguro interdimensional.');
+    errors.push(copy.insurance);
   }
 
   return errors;
@@ -84,21 +86,20 @@ export function validateReservation(
 // Reglas del paso de pasaporte; reflejan las validaciones de `/auth/register` y `/auth/login`.
 export function validatePassport(passport: PassportInput): string[] {
   const errors: string[] = [];
+  const copy = msg().validation;
   if (passport.mode === 'register') {
     const name = passport.fullName.trim();
-    if (name.length < 3 || name.length > 100)
-      errors.push('Ingresa tu nombre completo (entre 3 y 100 caracteres).');
+    if (name.length < 3 || name.length > 100) errors.push(copy.fullName);
   }
-  if (!EMAIL_PATTERN.test(passport.email.trim()))
-    errors.push('Ingresa un correo electrónico válido para tu pasaporte.');
+  if (!EMAIL_PATTERN.test(passport.email.trim())) errors.push(copy.email);
   if (
     passport.password.length < MIN_PASSWORD_LENGTH ||
     passport.password.length > MAX_PASSWORD_LENGTH
   ) {
     errors.push(
       passport.mode === 'register'
-        ? `Elige una clave de ${MIN_PASSWORD_LENGTH} a ${MAX_PASSWORD_LENGTH} caracteres.`
-        : 'Ingresa la clave de tu pasaporte.',
+        ? copy.passwordRegister(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH)
+        : copy.passwordLogin,
     );
   }
   return errors;
@@ -106,17 +107,4 @@ export function validatePassport(passport: PassportInput): string[] {
 
 export function remainingAfter(balance: number, total: number): number {
   return Math.round((balance - total) * 100) / 100;
-}
-
-export function formatCredits(value: number): string {
-  return new Intl.NumberFormat('es-CL', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-/** Saldo compacto para el HUD: `5.000 CR`. */
-export function formatBalance(value: number): string {
-  return `${new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 }).format(value)} CR`;
 }

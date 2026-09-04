@@ -8,46 +8,46 @@ import {
 import Header from 'components/Header.astro';
 import Portal from 'components/Portal.astro';
 import SiteFooter from 'components/SiteFooter.astro';
+import { localizedPath, messages, resolveAstroLocale } from 'i18n';
 import Layout from 'layouts/Layout.astro';
 import 'styles/not-found.css';
+
+const locale = resolveAstroLocale(Astro.currentLocale, Astro.url.pathname);
+const copy = messages[locale];
 ---
 
-<Layout
-  title="Dimensión no encontrada — Portal Trip"
-  description="La coordenada interdimensional que buscas no existe o cambió de universo."
->
+<Layout title={copy.meta.notFoundTitle} description={copy.meta.notFoundDescription}>
   <Header mode="lost" />
 
   <main class="not-found-main">
     <section class="not-found-copy" aria-labelledby="not-found-title">
       <div class="error-pill">
         <IconMapPinQuestion size={15} stroke={1.8} aria-hidden="true" />
-        Error de coordenadas · 404
+        {copy.notFound.pill}
       </div>
 
-      <p class="eyebrow">Houston... o Tierra C-137</p>
+      <p class="eyebrow">{copy.notFound.eyebrow}</p>
       <h1 id="not-found-title">
-        Esta dimensión<br>
-        <span>no está en el mapa.</span>
+        {copy.notFound.title}<br>
+        <span>{copy.notFound.titleAccent}</span>
       </h1>
       <p class="error-message">
-        El portal abrió en el lugar equivocado. La ruta pudo cambiar de universo, quedar fuera de
-        servicio o nunca haber existido.
+        {copy.notFound.copy}
       </p>
 
-      <section class="route-readout" aria-label="Ruta no encontrada">
-        <span>Coordenada solicitada</span>
-        <code id="missing-path">Cargando coordenada...</code>
+      <section class="route-readout" aria-label={copy.notFound.region}>
+        <span>{copy.notFound.requested}</span>
+        <code id="missing-path">{copy.notFound.loading}</code>
       </section>
 
       <div class="error-actions">
-        <a class="btn btn-primary" href="/">
-          Volver a Tierra C-137
+        <a class="btn btn-primary" href={localizedPath(locale, '/')}>
+          {copy.notFound.home}
           <IconArrowRight size={17} stroke={2} aria-hidden="true" />
         </a>
         <button class="btn btn-ghost" id="go-back" type="button">
           <IconArrowLeft size={16} stroke={2} aria-hidden="true" />
-          Regresar
+          {copy.notFound.back}
         </button>
       </div>
     </section>
@@ -65,7 +65,7 @@ import 'styles/not-found.css';
 
       <div class="scanner-label">
         <IconSparkles size={13} stroke={1.8} />
-        Portal inestable
+        {copy.notFound.unstable}
       </div>
     </div>
   </main>
@@ -87,7 +87,7 @@ import 'styles/not-found.css';
         return;
       }
 
-      window.location.assign('/');
+      window.location.assign(document.documentElement.dataset.home || '/');
     });
   }
   </script>

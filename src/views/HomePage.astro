@@ -1,0 +1,230 @@
+---
+import {
+  IconArrowRight,
+  IconCoins,
+  IconPlanet,
+  IconShieldCheck,
+  IconUsers,
+} from '@tabler/icons-astro';
+import BookingPanel from 'components/BookingPanel.astro';
+import DestinationCatalog from 'components/DestinationCatalog.astro';
+import Header from 'components/Header.astro';
+import Portal from 'components/Portal.astro';
+import ReservationsPanel from 'components/ReservationsPanel.astro';
+import SiteFooter from 'components/SiteFooter.astro';
+import { formatBalance, localizedPath, messages, resolveAstroLocale } from 'i18n';
+import Layout from 'layouts/Layout.astro';
+import 'styles/home.css';
+import { WELCOME_CREDIT } from 'utils/travelRules';
+
+const locale = resolveAstroLocale(Astro.currentLocale, Astro.url.pathname);
+const copy = messages[locale];
+const home = localizedPath(locale, '/');
+---
+
+<Layout>
+  <Header />
+
+  <main class="shell">
+    <section class="hero" aria-label={copy.hero.region}>
+      <div class="hero-copy">
+        <span class="hud-label"
+          ><i aria-hidden="true"></i>
+          {copy.hero.kicker}</span
+        >
+        <h1 id="hero-title">
+          {copy.hero.titleLine1}<br>
+          <span class="hero-accent" data-text={copy.hero.titleLine2}>{copy.hero.titleLine2}</span>
+        </h1>
+        <p class="hero-lead">
+          {copy.hero.lead}
+        </p>
+
+        <aside
+          class="credit-invite glass"
+          data-session-anonymous
+          aria-label={copy.hero.welcomeLabel}
+        >
+          <div class="invite-badge">
+            <span aria-hidden="true">✦</span>
+            <b>{formatBalance(WELCOME_CREDIT, locale)}</b>
+            <small>{copy.hero.gift}</small>
+          </div>
+          <div class="invite-copy">
+            <b>{copy.hero.welcomeTitle}</b>
+            <p>{copy.hero.welcomeCopy}</p>
+          </div>
+          <div class="invite-actions">
+            <button class="btn btn-primary" type="button" data-open-passport="register">
+              {copy.hero.createPassport}
+              <IconArrowRight size={16} stroke={2.2} aria-hidden="true" />
+            </button>
+            <button class="btn btn-ghost" type="button" data-open-passport="login">
+              {copy.hero.havePassport}
+            </button>
+          </div>
+        </aside>
+
+        <aside
+          class="credit-invite glass active"
+          data-session-authenticated
+          aria-label={copy.hero.balanceLabel}
+          hidden
+        >
+          <div class="invite-badge">
+            <span aria-hidden="true">◎</span>
+            <b data-account-balance>0 CR</b>
+            <small>{copy.hero.available}</small>
+          </div>
+          <div class="invite-copy">
+            <b>{copy.hero.activePassport} <span data-account-name>{copy.hero.traveler}</span></b>
+            <p>{copy.hero.readyCopy}</p>
+          </div>
+          <div class="invite-actions">
+            <a class="btn btn-primary" href="#destinos">
+              {copy.hero.pickDestination}
+              <IconArrowRight size={16} stroke={2.2} aria-hidden="true" />
+            </a>
+            <a class="btn btn-ghost" href={`${home}#destinos`} data-open-reservations>
+              {copy.header.reservations}
+            </a>
+          </div>
+        </aside>
+
+        <ul class="hero-stats" aria-label={copy.hero.statsLabel}>
+          <li><IconPlanet size={16} stroke={1.8} aria-hidden="true" /> {copy.hero.statRisk}</li>
+          <li>
+            <IconUsers size={16} stroke={1.8} aria-hidden="true" />
+            {copy.hero.statCrew}
+          </li>
+          <li>
+            <IconShieldCheck size={16} stroke={1.8} aria-hidden="true" />
+            {copy.hero.statInsurance}
+          </li>
+          <li>
+            <IconCoins size={16} stroke={1.8} aria-hidden="true" />
+            {copy.hero.statRefund}
+          </li>
+        </ul>
+      </div>
+
+      <div class="hero-visual">
+        <Portal size="clamp(240px, 30vw, 400px)" />
+        <section class="hero-readout glass" aria-label={copy.hero.readoutLabel}>
+          <span class="hud-label">{copy.hero.coordinates}</span>
+          <code>{copy.hero.origin}</code>
+          <code class="dim">{copy.hero.destinationPending}</code>
+          <code class="passport-readout" data-readout-passport hidden></code>
+        </section>
+        <div class="credit-chip hero-credit">
+          <span>{copy.hero.endorsedBy}</span>
+          <span class="logo-plate">
+            <img
+              src="https://desafiolatam.com/logo-real.png"
+              width="345"
+              height="142"
+              alt="Desafío Latam"
+              fetchpriority="high"
+            >
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <section class="search-deck glass" aria-labelledby="deck-title">
+      <form id="search-deck" class="deck-form" novalidate>
+        <div class="deck-field deck-origin">
+          <span class="deck-label">{copy.deck.origin}</span>
+          <strong>{copy.deck.earth}</strong>
+          <small>{copy.deck.terminal}</small>
+        </div>
+        <label class="deck-field">
+          <span class="deck-label" id="deck-title">{copy.deck.destination}</span>
+          <select class="control" id="deck-destination" name="destinationId">
+            <option value="">{copy.deck.pickCoordinate}</option>
+          </select>
+        </label>
+        <label class="deck-field">
+          <span class="deck-label">{copy.deck.jumpDate}</span>
+          <input class="control" id="deck-date" name="travelDate" type="date">
+        </label>
+        <div class="deck-field">
+          <span class="deck-label">{copy.deck.passengers}</span>
+          <span class="stepper">
+            <button type="button" data-deck-step="-1" aria-label={copy.deck.minusPassenger}>
+              −
+            </button>
+            <input
+              id="deck-passengers"
+              name="passengers"
+              type="number"
+              min="1"
+              max="8"
+              value="1"
+              readonly
+              aria-label={copy.deck.passengerCount}
+            >
+            <button type="button" data-deck-step="1" aria-label={copy.deck.plusPassenger}>+</button>
+          </span>
+        </div>
+        <button class="btn btn-primary deck-submit" type="submit">
+          {copy.deck.searchFare}
+          <IconArrowRight size={16} stroke={2.2} aria-hidden="true" />
+        </button>
+      </form>
+      <p class="deck-note">
+        <span><i aria-hidden="true"></i> {copy.deck.instantQuote}</span>
+        <span>{copy.deck.chargeCredits}</span>
+        <span>{copy.deck.fullRefund}</span>
+      </p>
+    </section>
+
+    <section class="featured" aria-labelledby="featured-title">
+      <div class="catalog-heading">
+        <div>
+          <span class="section-kicker">{copy.featured.kicker}</span>
+          <h2 id="featured-title" class="section-title">{copy.featured.title}</h2>
+        </div>
+        <p class="live-note"><i aria-hidden="true"></i> {copy.featured.fareNote}</p>
+      </div>
+      <div id="featured-routes" class="featured-routes" aria-live="polite"></div>
+    </section>
+
+    <section class="workspace" aria-label={copy.workspace.label}>
+      <div class="catalog-column">
+        <div class="view-tabs" role="tablist" aria-label={copy.workspace.sections}>
+          <button
+            type="button"
+            class="view-tab active"
+            id="destinations-tab"
+            data-view="destinations"
+            role="tab"
+            aria-selected="true"
+          >
+            {copy.workspace.explore}
+          </button>
+          <button
+            type="button"
+            class="view-tab"
+            id="reservations-tab"
+            data-view="reservations"
+            role="tab"
+            aria-selected="false"
+          >
+            {copy.workspace.reservations}
+            <span id="reservation-count" class="tab-count">0</span>
+          </button>
+        </div>
+        <DestinationCatalog />
+        <ReservationsPanel />
+      </div>
+      <BookingPanel />
+    </section>
+  </main>
+
+  <SiteFooter />
+
+  <script>
+  import 'scripts/app';
+  </script>
+</Layout>

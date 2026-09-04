@@ -28,24 +28,10 @@ export enum PlannerView {
   RESERVATIONS = 'reservations',
 }
 
-// Etiquetas en español y clases CSS para cada código de la API.
-export const riskLabels: Record<RiskLevel, string> = {
-  [RiskLevel.LOW]: 'Bajo',
-  [RiskLevel.MEDIUM]: 'Medio',
-  [RiskLevel.HIGH]: 'Alto',
-};
-
 export const riskClassNames: Record<RiskLevel, string> = {
   [RiskLevel.LOW]: 'bajo',
   [RiskLevel.MEDIUM]: 'medio',
   [RiskLevel.HIGH]: 'alto',
-};
-
-export const statusLabels: Record<ReservationStatus, string> = {
-  [ReservationStatus.CONFIRMED]: 'Confirmada',
-  [ReservationStatus.IN_PROGRESS]: 'En curso',
-  [ReservationStatus.COMPLETED]: 'Completada',
-  [ReservationStatus.CANCELLED]: 'Cancelada',
 };
 
 export const statusClassNames: Record<ReservationStatus, string> = {
@@ -53,12 +39,6 @@ export const statusClassNames: Record<ReservationStatus, string> = {
   [ReservationStatus.IN_PROGRESS]: 'en-curso',
   [ReservationStatus.COMPLETED]: 'completada',
   [ReservationStatus.CANCELLED]: 'cancelada',
-};
-
-export const tripTypeLabels: Record<TripType, string> = {
-  [TripType.EXPRESS]: 'Express',
-  [TripType.EXPLORATION]: 'Exploración',
-  [TripType.PREMIUM]: 'Premium',
 };
 
 /** Cuerpo exacto de `POST /reservations`. El email sale de la cuenta autenticada. */

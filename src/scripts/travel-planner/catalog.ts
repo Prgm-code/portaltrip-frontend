@@ -1,3 +1,4 @@
+import { compareNames, locationTypeLabel, msg } from 'i18n';
 import type { Location } from 'models/catalog';
 import { type RiskLevel, TripType } from 'models/reservation';
 import {
@@ -65,20 +66,16 @@ export function renderCatalog(onRetry: () => void = () => void loadCatalog()): v
   } else if (state.loading && !state.locations.length) {
     status.replaceChildren(
       createElement('span', { className: 'spinner' }),
-      document.createTextNode(' Sincronizando coordenadas con la Ciudadela...'),
+      document.createTextNode(msg().catalog.syncing),
     );
     grid.replaceChildren(...Array.from({ length: SKELETON_COUNT }, createSkeletonCard));
   } else if (filtered.length === 0) {
     status.replaceChildren(
-      createEmptyState(
-        'Sin coincidencias en esta dimensión',
-        'Prueba con otro nombre, dimensión o tipo de destino.',
-        true,
-      ),
+      createEmptyState(msg().catalog.emptyTitle, msg().catalog.emptyCopy, true),
     );
     grid.replaceChildren();
   } else {
-    status.textContent = `${filtered.length} coordenada${filtered.length === 1 ? '' : 's'} en el catálogo · mostrando ${visible.length}`;
+    status.textContent = msg().catalog.count(filtered.length, visible.length);
     grid.replaceChildren(
       ...visible.map((location) =>
         createDestinationCard(
@@ -90,7 +87,7 @@ export function renderCatalog(onRetry: () => void = () => void loadCatalog()): v
     );
   }
 
-  element<HTMLSpanElement>('#page-status').textContent = `Página ${page} de ${totalPages}`;
+  element<HTMLSpanElement>('#page-status').textContent = msg().catalog.page(page, totalPages);
   const unavailable = (state.loading && !state.locations.length) || Boolean(state.error);
   element<HTMLButtonElement>('#previous-page').disabled = unavailable || page <= 1;
   element<HTMLButtonElement>('#next-page').disabled = unavailable || page >= totalPages;
@@ -126,7 +123,7 @@ export function renderFeaturedRoutes(): void {
 
   if (!featured.length) {
     container.replaceChildren(
-      createEmptyState('Sin rutas destacadas', 'El catálogo aún no responde.', true),
+      createEmptyState(msg().featured.emptyTitle, msg().featured.emptyCopy, true),
     );
     return;
   }
@@ -153,13 +150,16 @@ export function updateLocationOptions(): void {
   const state = travelStore.getState();
   const previousDestination = String(state.draft.destinationId || '');
   const sorted = [...state.locations].sort((first, second) =>
-    first.name.localeCompare(second.name, 'es'),
+    compareNames(first.name, second.name),
   );
   const targets: Array<[HTMLSelectElement | null, string]> = [
-    [document.getElementById('destinationId') as HTMLSelectElement | null, 'Selecciona un destino'],
+    [
+      document.getElementById('destinationId') as HTMLSelectElement | null,
+      msg().catalog.selectDestination,
+    ],
     [
       document.getElementById('deck-destination') as HTMLSelectElement | null,
-      'Elige una coordenada',
+      msg().deck.pickCoordinate,
     ],
   ];
 
@@ -187,11 +187,13 @@ export function updateTypeOptions(): void {
   });
   const types = [...counts.entries()]
     .filter(([, count]) => count >= TYPE_FILTER_MIN_COUNT)
-    .sort((first, second) => second[1] - first[1] || first[0].localeCompare(second[0]));
+    .sort((first, second) => second[1] - first[1] || compareNames(first[0], second[0]));
 
   select.replaceChildren(
-    new Option('Todos los tipos', 'all'),
-    ...types.map(([type, count]) => new Option(`${type} (${count})`, type)),
+    new Option(msg().catalog.allTypes, 'all'),
+    ...types.map(
+      ([type, count]) => new Option(msg().catalog.typeOption(locationTypeLabel(type), count), type),
+    ),
   );
   select.value = types.some(([type]) => type === state.typeFilter) ? state.typeFilter : 'all';
 }

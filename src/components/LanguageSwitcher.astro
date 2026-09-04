@@ -1,0 +1,47 @@
+---
+import { locales, localizedPath, messages, resolveAstroLocale, stripLocalePrefix } from 'i18n';
+
+const locale = resolveAstroLocale(Astro.currentLocale, Astro.url.pathname);
+const path = stripLocalePrefix(Astro.url.pathname);
+const copy = messages[locale].lang;
+---
+
+<nav class="lang-switch" aria-label={copy.switcher}>
+  {locales.map((code) => (
+    <a
+      href={localizedPath(code, path)}
+      hreflang={code}
+      data-astro-reload
+      aria-current={code === locale ? 'true' : undefined}
+    >
+      {copy[code]}
+    </a>
+  ))}
+</nav>
+<script>
+import { parseLocale, switchLocaleHref } from 'i18n';
+
+// El id de la reserva vive en `?id=` del cliente; el HTML estático no lo conoce.
+function currentSwitchHref(locale: ReturnType<typeof parseLocale>): string {
+  const { pathname, search, hash } = window.location;
+  return switchLocaleHref(locale, pathname, search, hash);
+}
+
+function paintLangSwitch(): void {
+  document.querySelectorAll<HTMLAnchorElement>('.lang-switch a[hreflang]').forEach((link) => {
+    link.href = currentSwitchHref(parseLocale(link.getAttribute('hreflang')));
+  });
+}
+
+document.addEventListener('click', (event) => {
+  if (!(event.target instanceof Element) || event.button !== 0) return;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  const link = event.target.closest<HTMLAnchorElement>('.lang-switch a[hreflang]');
+  if (!link) return;
+  event.preventDefault();
+  window.location.assign(currentSwitchHref(parseLocale(link.getAttribute('hreflang'))));
+});
+
+paintLangSwitch();
+document.addEventListener('astro:page-load', paintLangSwitch);
+</script>

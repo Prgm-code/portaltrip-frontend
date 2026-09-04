@@ -1,3 +1,4 @@
+import { msg } from 'i18n';
 import type { PassportInput } from 'models/auth';
 import { type Character, CharacterStatus, type Location } from 'models/catalog';
 import { PlannerView, type ReservationDraft, TripType } from 'models/reservation';
@@ -42,10 +43,6 @@ import {
 
 type FormValueControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
-const INSURANCE_COPY = {
-  mandatory: 'Obligatorio en dimensiones desconocidas',
-  optional: 'Cobertura ante portales inestables',
-} as const;
 const DESTINATION_RESIDENT_LIMIT = 16;
 const COMPANION_OPTION_LIMIT = 20;
 
@@ -83,10 +80,9 @@ function passportStep(): HTMLElement {
 }
 
 function submitLabel(): string {
-  if (isAuthenticated()) return 'Confirmar reserva';
-  return passportStep().dataset.passportMode === 'login'
-    ? 'Ingresar y reservar'
-    : 'Crear pasaporte y reservar';
+  const copy = msg().booking;
+  if (isAuthenticated()) return copy.submitConfirm;
+  return passportStep().dataset.passportMode === 'login' ? copy.submitLogin : copy.submitRegister;
 }
 
 function setSubmitLabel(text: string): void {
@@ -117,13 +113,14 @@ export function renderBookingApiState(): void {
   companionGrid.setAttribute('aria-disabled', String(blocked));
   form.setAttribute('aria-busy', String(loading || submitting));
 
+  const copy = msg().booking;
   setSubmitLabel(
     submitting
-      ? 'Abriendo portal...'
+      ? copy.submitting
       : loading && !locations.length
-        ? 'Sincronizando catálogo...'
+        ? copy.syncing
         : error
-          ? 'Portal no disponible'
+          ? copy.unavailable
           : submitLabel(),
   );
 
@@ -143,21 +140,19 @@ export function renderPassportStep(): void {
   const step = passportStep();
   const authenticated = isAuthenticated();
   step.hidden = authenticated;
+  const copy = msg().booking;
   element('[data-booking-kicker]').textContent = authenticated
-    ? 'Consola de salto · Ruta'
-    : 'Consola de salto · Paso 1 de 2 · Ruta';
+    ? copy.kickerRoute
+    : copy.kickerStep1;
   element('.submit-note span').textContent = authenticated
-    ? 'La reserva se cobra en créditos de tu pasaporte'
-    : 'Tu pasaporte se crea en el mismo paso y recibe créditos de bienvenida';
+    ? copy.noteAuthenticated
+    : copy.noteAnonymous;
   if (!authenticated) {
     const mode = step.dataset.passportMode === 'login' ? 'login' : 'register';
     setPassportMode(step, mode);
     const title = step.querySelector<HTMLElement>('[data-passport-step-title]');
     if (title)
-      title.textContent =
-        mode === 'register'
-          ? 'Crea tu pasaporte y confirma el salto'
-          : 'Ingresa a tu pasaporte y confirma el salto';
+      title.textContent = mode === 'register' ? copy.stepRegisterTitle : copy.stepLoginTitle;
     const fullName = step.querySelector<HTMLInputElement>('[name="fullName"]');
     const passengerName = element<HTMLInputElement>('#passengerName').value.trim();
     if (fullName && !fullName.value && passengerName) fullName.value = passengerName;
@@ -172,9 +167,7 @@ export function renderCompanions(): void {
   element('#companion-status').textContent = `${draft.companionIds.length} / 3`;
 
   if (!companions.length) {
-    grid.replaceChildren(
-      createElement('p', { text: 'No hay personajes vivos disponibles para esta ruta.' }),
-    );
+    grid.replaceChildren(createElement('p', { text: msg().booking.crewNone }));
     return;
   }
   grid.replaceChildren(
@@ -199,8 +192,8 @@ function renderBalanceTile(total: number): void {
   tile.classList.toggle('warn', remaining < 0);
   tile.title =
     remaining < 0
-      ? `Te faltan ${formatBalance(Math.abs(remaining))} para este salto`
-      : `Saldo actual ${formatBalance(session.user.balance)}`;
+      ? msg().booking.missingBalance(formatBalance(Math.abs(remaining)))
+      : msg().booking.currentBalance(formatBalance(session.user.balance));
 }
 
 export function renderQuote(): void {
@@ -229,8 +222,8 @@ export function renderQuote(): void {
   }
 
   element('#insurance-copy').textContent = mandatory
-    ? INSURANCE_COPY.mandatory
-    : INSURANCE_COPY.optional;
+    ? msg().booking.insuranceMandatory
+    : msg().booking.insuranceOptional;
 }
 
 // Prioriza residentes vivos del destino y completa el selector con el catálogo base.
@@ -313,8 +306,8 @@ async function ensurePassport(passport: PassportInput): Promise<boolean> {
   if (result.ok) {
     showToast(
       passport.mode === 'register'
-        ? `Pasaporte creado · ${formatBalance(result.session.user.balance)} de bienvenida`
-        : `Bienvenido de vuelta · ${formatBalance(result.session.user.balance)} disponibles`,
+        ? msg().toasts.registered(formatBalance(result.session.user.balance))
+        : msg().toasts.welcomedBack(formatBalance(result.session.user.balance)),
     );
     return true;
   }
@@ -332,7 +325,7 @@ function handleSubmitError(error: unknown): void {
     renderPassportStep();
     setPassportMode(passportStep(), 'login');
     renderPassportStep();
-    showFormErrors(['Tu pasaporte venció. Ingresa de nuevo y vuelve a confirmar la reserva.']);
+    showFormErrors([msg().toasts.expiredBooking]);
     return;
   }
   if (isBalanceError(error)) {
@@ -346,13 +339,11 @@ function handleSubmitError(error: unknown): void {
   }
   if (error instanceof PortalTripApiError && error.status === 409) {
     attempt = null;
-    showFormErrors([
-      'La Ciudadela detectó un intento anterior con otros datos. Vuelve a confirmar la reserva.',
-    ]);
+    showFormErrors([msg().toasts.conflictRetry]);
     return;
   }
   const view = getApiErrorView(error);
-  showFormErrors([`${view.title}. ${view.message} ${view.hint}`]);
+  showFormErrors([msg().errors.form(view.title, view.message, view.hint)]);
 }
 
 // Evita el submit nativo, valida en local, asegura el pasaporte y crea la reserva en la API.
@@ -372,7 +363,7 @@ export async function submitReservation(event: SubmitEvent): Promise<void> {
     .getState()
     .companions.filter((character) => draft.companionIds.includes(character.id));
   const errors = validateReservation(draft, destination, companions);
-  if (!destination) errors.push('El destino seleccionado ya no está disponible.');
+  if (!destination) errors.push(msg().booking.destinationGone);
 
   const passport = isAuthenticated() ? null : readPassport(passportStep());
   if (passport) errors.push(...validatePassport(passport));
@@ -390,7 +381,7 @@ export async function submitReservation(event: SubmitEvent): Promise<void> {
     travelStore.getState().upsertReservation(result.reservation);
     renderReservations();
     showToast(
-      `Reserva ${result.reservation.number} confirmada · saldo ${formatBalance(result.remainingBalance)}`,
+      msg().toasts.booked(result.reservation.number, formatBalance(result.remainingBalance)),
     );
     travelStore.getState().resetDraft();
     element<HTMLFormElement>('#booking-form').reset();

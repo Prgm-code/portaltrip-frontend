@@ -1,43 +1,49 @@
 ---
 import { IconArrowLeft, IconArrowRight, IconChevronDown, IconLogout } from '@tabler/icons-astro';
+import LanguageSwitcher from 'components/LanguageSwitcher.astro';
 import PortalLogo from 'components/PortalLogo.astro';
 import UplinkStatus from 'components/UplinkStatus.astro';
+import { localizedPath, messages, resolveAstroLocale } from 'i18n';
 
 interface Props {
   mode?: 'home' | 'journey' | 'lost';
 }
 
 const { mode = 'home' } = Astro.props;
+const locale = resolveAstroLocale(Astro.currentLocale, Astro.url.pathname);
+const copy = messages[locale];
+const home = localizedPath(locale, '/');
 ---
 
 <div class="hud-bar">
-  <header class="hud-header">
-    <PortalLogo shared />
+  <header class:list={['hud-header', mode !== 'home' && 'hud-compact']}>
+    <PortalLogo shared href={home} />
     {mode === 'home' ? (
-        <nav class="hud-nav" aria-label="Navegación principal">
+        <nav class="hud-nav" aria-label={copy.header.nav}>
           <a class="nav-link active" href="#destinos">
-            Destinos
+            {copy.header.destinations}
           </a>
           <button class="nav-link" id="header-reservations" type="button">
-            Mis reservas
+            {copy.header.reservations}
           </button>
         </nav>
       ) : (
         <span class:list={['hud-label', 'hud-center', mode === 'lost' && 'warn']}>
           <i aria-hidden="true" />
-          {mode === 'journey' ? 'Señal del portal activa' : 'Portal inestable'}
+          {mode === 'journey' ? copy.header.signalOn : copy.header.signalLost}
         </span>
       )}
     <div class="hud-right">
-      <UplinkStatus class="hud-uplink" />
+      <LanguageSwitcher />
+      <UplinkStatus class="hud-uplink" label={copy.uplink.label} />
 
       <div class="hud-session" data-session-anonymous>
         <button class="btn btn-ghost hud-cta" type="button" data-open-passport="login">
-          Ingresar
+          {copy.header.signIn}
         </button>
         {mode === 'home' && (
             <a href="#reserva" class="btn btn-primary hud-cta">
-              Reservar salto
+              {copy.header.bookJump}
               <IconArrowRight size={16} stroke={2.2} aria-hidden="true" />
             </a>
           )}
@@ -51,34 +57,36 @@ const { mode = 'home' } = Astro.props;
             type="button"
             aria-haspopup="menu"
             aria-expanded="false"
-            aria-label="Cuenta y saldo"
+            aria-label={copy.header.account}
           >
             <i aria-hidden="true"></i>
-            <span data-account-name>Pasaporte</span>
+            <span data-account-name>{copy.header.passport}</span>
             <em data-account-balance>0 CR</em>
             <IconChevronDown size={14} stroke={2} aria-hidden="true" />
           </button>
           <div class="account-menu" data-account-menu role="menu" hidden>
             <p class="account-email" data-account-email></p>
-            <a role="menuitem" href="/#destinos" data-open-reservations>Mis reservas</a>
+            <a role="menuitem" href={`${home}#destinos`} data-open-reservations>
+              {copy.header.reservations}
+            </a>
             <button role="menuitem" type="button" data-logout>
               <IconLogout size={14} stroke={2} aria-hidden="true" />
-              Cerrar sesión
+              {copy.header.signOut}
             </button>
           </div>
         </div>
         {mode === 'home' && (
             <a href="#reserva" class="btn btn-primary hud-cta">
-              Reservar salto
+              {copy.header.bookJump}
               <IconArrowRight size={16} stroke={2.2} aria-hidden="true" />
             </a>
           )}
       </div>
 
       {mode === 'journey' && (
-          <a href="/" class="btn btn-ghost hud-cta">
+          <a href={home} class="btn btn-ghost hud-cta">
             <IconArrowLeft size={16} stroke={2.2} aria-hidden="true" />
-            Volver a mis reservas
+            {copy.header.backToReservations}
           </a>
         )}
     </div>
