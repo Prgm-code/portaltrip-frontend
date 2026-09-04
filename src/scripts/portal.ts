@@ -135,6 +135,16 @@ function sparkMap(): THREE.Texture {
   return texture;
 }
 
+function showPortalFallback(wrap: Element | null): void {
+  if (!wrap) return;
+  if (!wrap.querySelector('.portal-rings')) {
+    const rings = document.createElement('div');
+    rings.className = 'portal-rings';
+    wrap.querySelector('.portal-canvas')?.before(rings);
+  }
+  wrap.classList.add('portal-fallback');
+}
+
 function startPortal(canvas: HTMLCanvasElement): void {
   const wrap = canvas.closest('.portal-wrap');
   const chaos = canvas.closest('.lost-portal') ? 1 : 0;
@@ -150,14 +160,13 @@ function startPortal(canvas: HTMLCanvasElement): void {
       powerPreference: 'high-performance',
     });
   } catch {
-    wrap?.classList.add('portal-fallback');
+    showPortalFallback(wrap);
     return;
   }
 
   renderer.setClearColor(0x000000, 0);
   renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  wrap?.classList.add('portal-live');
 
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
@@ -341,6 +350,7 @@ function startPortal(canvas: HTMLCanvasElement): void {
     placeBubbles(time);
     placeSparks(time);
     renderer.render(scene, camera);
+    if (wrap && !wrap.classList.contains('portal-live')) wrap.classList.add('portal-live');
   }
 
   function loop(now: number): void {
@@ -397,6 +407,8 @@ function startPortal(canvas: HTMLCanvasElement): void {
     if (!document.hidden) restart();
   });
 
+  renderer.compile(scene, camera);
+  paint(performance.now());
   restart();
 }
 
@@ -411,4 +423,5 @@ function mountPortals(): void {
 }
 
 mountPortals();
+document.addEventListener('astro:after-swap', mountPortals);
 document.addEventListener('astro:page-load', mountPortals);

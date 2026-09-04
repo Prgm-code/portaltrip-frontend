@@ -556,7 +556,7 @@ input[type="date"].control::-webkit-calendar-picker-indicator {
 }
 
 .portal-rings {
-  display: block;
+  display: none;
   background:
     radial-gradient(circle, #04140a 0 42%, transparent 43%),
     conic-gradient(from 20deg, #1f8a3b, #97f75d, #6fd43c, #dfffb2, #1f8a3b, #97f75d);
@@ -582,8 +582,8 @@ input[type="date"].control::-webkit-calendar-picker-indicator {
   animation: portal-spin 12s linear infinite reverse;
 }
 
-.portal-live .portal-rings {
-  display: none;
+.portal-fallback .portal-rings {
+  display: block;
 }
 
 .portal-hole {

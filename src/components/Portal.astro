@@ -8,7 +8,6 @@ const { class: className = '', size = '320px' } = Astro.props;
 ---
 
 <div class:list={['portal-wrap', className]} style={`--portal-size: ${size}`} aria-hidden="true">
-  <div class="portal-rings"></div>
   <canvas class="portal-canvas"></canvas>
   <div class="portal-hole"><slot /></div>
 </div>
