@@ -114,7 +114,29 @@ const home = localizedPath(locale, '/');
           <span class="hud-label">{copy.hero.coordinates}</span>
           <code>{copy.hero.origin}</code>
           <code class="dim">{copy.hero.destinationPending}</code>
-          <code class="passport-readout" data-readout-passport hidden></code>
+          <div
+            class="portal-link"
+            data-portal-link
+            data-state="boot"
+            data-label-boot={copy.hero.portalOpening}
+            data-label-live={copy.hero.portalStable}
+            data-label-fallback={copy.hero.portalDegraded}
+          >
+            <code>
+              <span data-portal-link-status>{copy.hero.portalOpening}</span>
+              <span class="portal-link-pct" data-portal-link-pct>12%</span>
+            </code>
+            <div
+              class="portal-link-meter"
+              role="meter"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="12"
+              aria-label={copy.hero.portalLinkLevel}
+            >
+              <span class="portal-link-fill" style="width: 12%"></span>
+            </div>
+          </div>
         </section>
         <div class="credit-chip hero-credit">
           <span>{copy.hero.endorsedBy}</span>

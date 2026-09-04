@@ -30,7 +30,7 @@ function setAccountMenu(open: boolean): void {
   menu.hidden = !open;
 }
 
-/** Refleja la sesión en header, readout del héroe y atributo raíz. */
+/** Refleja la sesión en header, invitaciones del héroe y atributo raíz. */
 export function syncSessionHud(): void {
   const session = getActiveSession();
   document.documentElement.dataset.session = session ? 'authenticated' : 'anonymous';
@@ -55,16 +55,6 @@ export function syncSessionHud(): void {
     query<HTMLElement>('#account-chip')?.classList.toggle('expiring', expiring);
   } else {
     setAccountMenu(false);
-  }
-  const readout = query<HTMLElement>('[data-readout-passport]');
-  if (readout) {
-    readout.hidden = !session;
-    readout.textContent = session
-      ? msg().hero.passportReadout(
-          session.user.fullName.toUpperCase(),
-          formatBalance(session.user.balance),
-        )
-      : '';
   }
   scheduleExpiry(session ? sessionMillisecondsLeft(session) : 0);
 }

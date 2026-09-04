@@ -143,6 +143,139 @@ function showPortalFallback(wrap: Element | null): void {
     wrap.querySelector('.portal-canvas')?.before(rings);
   }
   wrap.classList.add('portal-fallback');
+  paintPortalLink(wrap, 'fallback');
+}
+
+const LINK_LEVEL = {
+  boot: 12,
+  live: 95,
+  fallback: 40,
+} as const;
+
+type LinkState = keyof typeof LINK_LEVEL;
+
+function portalLinkPanel(wrap: Element | null): HTMLElement | null {
+  return wrap?.closest('.hero-visual')?.querySelector('[data-portal-link]') ?? null;
+}
+
+function stopLinkAnim(panel: HTMLElement): void {
+  const tick = Number(panel.dataset.tick);
+  const drift = Number(panel.dataset.drift);
+  if (tick) cancelAnimationFrame(tick);
+  if (drift) cancelAnimationFrame(drift);
+  panel.dataset.tick = '';
+  panel.dataset.drift = '';
+}
+
+function clampLink(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function writeLinkLevel(
+  fill: Element | null,
+  pct: Element,
+  meter: Element | null,
+  value: number,
+): void {
+  const shown = Math.round(clampLink(value, 0, 99));
+  pct.textContent = `${shown}%`;
+  if (fill instanceof HTMLElement) fill.style.width = `${clampLink(value, 0, 100)}%`;
+  meter?.setAttribute('aria-valuenow', String(shown));
+}
+
+function pickLinkTarget(state: LinkState): number {
+  const roll = Math.random();
+  if (state === 'live') {
+    if (roll < 0.12) return 84 + Math.random() * 6;
+    if (roll < 0.38) return 90 + Math.random() * 4;
+    if (roll < 0.86) return 94 + Math.random() * 4;
+    return 98 + Math.random() * 1.2;
+  }
+  if (state === 'fallback') {
+    if (roll < 0.2) return 22 + Math.random() * 8;
+    if (roll < 0.7) return 32 + Math.random() * 16;
+    return 50 + Math.random() * 10;
+  }
+  if (roll < 0.35) return 7 + Math.random() * 8;
+  if (roll < 0.8) return 14 + Math.random() * 10;
+  return 24 + Math.random() * 8;
+}
+
+function startLinkDrift(
+  panel: HTMLElement,
+  fill: Element | null,
+  pct: Element,
+  meter: Element | null,
+  state: LinkState,
+  from: number,
+): void {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    writeLinkLevel(fill, pct, meter, LINK_LEVEL[state]);
+    return;
+  }
+  if (fill instanceof HTMLElement) fill.style.transition = 'none';
+  const seed = Math.random() * Math.PI * 2;
+  let current = from;
+  let target = pickLinkTarget(state);
+  let nextAt = performance.now() + 220 + Math.random() * 480;
+  const loop = (now: number): void => {
+    if (!panel.isConnected || panel.dataset.state !== state) return;
+    if (!document.hidden) {
+      if (now >= nextAt) {
+        target = pickLinkTarget(state);
+        nextAt = now + 260 + Math.random() * 980;
+      }
+      const breath = Math.sin(now / 640 + seed) * 0.55 + Math.sin(now / 310 + seed * 1.7) * 0.25;
+      current += (target + breath - current) * 0.055;
+      writeLinkLevel(fill, pct, meter, current);
+    }
+    panel.dataset.drift = String(requestAnimationFrame(loop));
+  };
+  panel.dataset.drift = String(requestAnimationFrame(loop));
+}
+
+function paintPortalLink(wrap: Element | null, state: LinkState): void {
+  const panel = portalLinkPanel(wrap);
+  if (!panel) return;
+  const labels = {
+    boot: panel.dataset.labelBoot,
+    live: panel.dataset.labelLive,
+    fallback: panel.dataset.labelFallback,
+  };
+  const target = LINK_LEVEL[state];
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const status = panel.querySelector('[data-portal-link-status]');
+  const pct = panel.querySelector('[data-portal-link-pct]');
+  const fill = panel.querySelector('.portal-link-fill');
+  const meter = panel.querySelector('[role="meter"]');
+  const previous = Number(meter?.getAttribute('aria-valuenow') ?? LINK_LEVEL.boot);
+  stopLinkAnim(panel);
+  panel.dataset.state = state;
+  if (status && labels[state]) status.textContent = labels[state];
+  if (!pct) return;
+  if (reduceMotion) {
+    if (fill instanceof HTMLElement) fill.style.transition = 'none';
+    writeLinkLevel(fill, pct, meter, target);
+    return;
+  }
+  if (fill instanceof HTMLElement) {
+    fill.style.transition = 'width 1.05s linear';
+    fill.style.width = `${target}%`;
+  }
+  const started = performance.now();
+  const duration = 1050;
+  const step = (now: number): void => {
+    if (!panel.isConnected) return;
+    const t = Math.min(1, (now - started) / duration);
+    const value = previous + (target - previous) * t;
+    writeLinkLevel(fill, pct, meter, value);
+    if (t < 1) {
+      panel.dataset.tick = String(requestAnimationFrame(step));
+      return;
+    }
+    startLinkDrift(panel, fill, pct, meter, state, value);
+  };
+  panel.dataset.tick = String(requestAnimationFrame(step));
 }
 
 function startPortal(canvas: HTMLCanvasElement): void {
@@ -350,13 +483,18 @@ function startPortal(canvas: HTMLCanvasElement): void {
     placeBubbles(time);
     placeSparks(time);
     renderer.render(scene, camera);
-    if (wrap && !wrap.classList.contains('portal-live')) wrap.classList.add('portal-live');
+    if (wrap && !wrap.classList.contains('portal-live')) {
+      wrap.classList.add('portal-live');
+      paintPortalLink(wrap, 'live');
+    }
   }
 
   function loop(now: number): void {
     if (!canvas.isConnected) {
       cancelAnimationFrame(frame);
       events.abort();
+      const panel = portalLinkPanel(wrap);
+      if (panel) stopLinkAnim(panel);
       portalGeo.dispose();
       portalMat.dispose();
       bubbleGeo.dispose();
