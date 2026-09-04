@@ -74,7 +74,8 @@ export const en: Messages = {
     portalStable: 'LINK · HOLD',
     portalDegraded: 'LINK · FAILSAFE',
     portalBosonStatus: 'LINK · BOSONS',
-    portalBosonAlert: 'Sweep the mouse over the portal to fire the bosons',
+    portalBosonAlert:
+      'Move the pointer across the portal for a few seconds to stabilize it and earn credits',
     portalLinkLevel: 'Portal link level',
   },
   deck: {
@@ -296,6 +297,7 @@ export const en: Messages = {
       'The Citadel saw an earlier attempt with different data. Confirm the booking again.',
     expeditionDone: (number: string) => `Expedition ${number} completed`,
     toastPair: (title: string, message: string) => `${title}: ${message}`,
+    portalStipend: (amount: string) => `Portal stable · +${amount}`,
   },
   errors: {
     preview: (status: number) => `Simulated HTTP ${status} error for UI review.`,

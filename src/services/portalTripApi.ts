@@ -150,6 +150,33 @@ export function getProfile(): Promise<UserProfile> {
   return request<UserProfile>('/users/me', { auth: true });
 }
 
+export interface PortalActivity {
+  cycleId: string;
+  nextSequence: number;
+  progress: number;
+  payout: number;
+  balance: number;
+}
+
+export interface PortalActivitySample {
+  cycleId: string;
+  sequence: number;
+  activeMs: number;
+  distance: number;
+}
+
+export function startPortalActivity(): Promise<PortalActivity> {
+  return request<PortalActivity>('/users/me/portal-activity/start', { method: 'POST', auth: true });
+}
+
+export function reportPortalActivity(sample: PortalActivitySample): Promise<PortalActivity> {
+  return request<PortalActivity>('/users/me/portal-activity', {
+    method: 'POST',
+    auth: true,
+    body: sample,
+  });
+}
+
 // Catálogo público. Las listas llegan completas: el navegador filtra y pagina.
 const catalogControl: ApiRequestControl = { trackLoading: true, reportError: true };
 

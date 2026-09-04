@@ -9,7 +9,7 @@ import {
 } from 'models/reservation';
 import { createElement, createImage, createSvg } from 'ui/dom';
 
-export type ToastKind = 'success' | 'neutral';
+export type ToastKind = 'success' | 'neutral' | 'credit';
 
 const LOCATION_GLYPHS = ['◉', '◎', '◌', '◍'] as const;
 
@@ -294,7 +294,7 @@ export function createToast(message: string, kind: ToastKind): HTMLDivElement {
   return createElement(
     'div',
     { className: `toast ${kind}` },
-    createElement('span', { text: kind === 'success' ? '✓' : 'i' }),
+    createElement('span', { text: kind === 'success' ? '✓' : kind === 'credit' ? '+' : 'i' }),
     message,
   );
 }

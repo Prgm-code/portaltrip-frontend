@@ -74,7 +74,8 @@ export const es = {
     portalStable: 'ENLACE · ESTABLE',
     portalDegraded: 'ENLACE · DEGRADADO',
     portalBosonStatus: 'ENLACE · BOSONES',
-    portalBosonAlert: 'Pasa el mouse sobre el portal para activar los bosones',
+    portalBosonAlert:
+      'Mueve el puntero por el portal durante unos segundos para estabilizarlo y ganar créditos',
     portalLinkLevel: 'Nivel de conexión del portal',
   },
   deck: {
@@ -295,6 +296,7 @@ export const es = {
       'La Ciudadela detectó un intento anterior con otros datos. Vuelve a confirmar la reserva.',
     expeditionDone: (number: string) => `Expedición ${number} completada`,
     toastPair: (title: string, message: string) => `${title}: ${message}`,
+    portalStipend: (amount: string) => `Portal estable · +${amount}`,
   },
   errors: {
     preview: (status: number) => `Error HTTP ${status} simulado para revisar la interfaz.`,

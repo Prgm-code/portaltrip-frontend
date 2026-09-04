@@ -8,7 +8,8 @@ catalog.
 This repository is the UI. The Java API is
 [`Prgm-code/portaltrip`](https://github.com/Prgm-code/portaltrip): it serves the
 catalog, issues the JWT passport, grants the welcome credits and owns every
-reservation. The browser keeps only the session.
+reservation and portal reward. The browser persists the session and visual play cadence;
+reward eligibility and amounts are validated by the API.
 
 ## 🌐 Live deployment
 
@@ -92,7 +93,7 @@ PostgreSQL is now listening on `localhost:5432` (`rickandmorty` / `rick` / `mort
 ./mvnw clean test
 ```
 
-172 tests (JUnit 5 + Mockito) run against in-memory H2; Docker is not required for this step.
+196 tests (JUnit Jupiter 6 + Mockito) run against in-memory H2; Docker is not required for this step.
 
 ### 3. Start the Backend Microservice
 
@@ -147,7 +148,7 @@ docker run --rm -p 4321:80 portaltrip-frontend
 ## Architecture
 
 Astro prints the first HTML. After that, the session is vanilla TypeScript: DOM
-events, `fetch`, and two Zustand stores. There is no React tree and no form library.
+events, `fetch`, and three Zustand stores. There is no React tree and no form library.
 Vite is the bundler Astro already ships.
 
 ```text
@@ -157,7 +158,7 @@ Browser
 ├── Client scripts       events, rendering, session HUD, WebGL
 ├── Domain models        enums, labels and API shapes
 ├── Travel rules         instant quote + local validation
-├── Zustand stores       travelStore (catalog, draft, view) · sessionStore (JWT, balance)
+├── Zustand stores       travelStore (catalog, draft, view) · sessionStore (JWT, balance) · portalPlayStore (play cadence)
 └── API client           fetch + timeout + envelope + bearer + typed errors
         └── PortalTrip API (/api/v1)
 ```
@@ -171,6 +172,11 @@ flowchart TD
   scripts --> planner["travel-planner/*"]
   scripts --> journey["journey.ts"]
   scripts --> portal["portal.ts Three.js"]
+  portal --> activity["portal-activity.ts<br>movement and active time"]
+  portal --> play["portalPlayStore<br>visual cadence"]
+  activity --> api
+  activity --> session
+  play --> playStorage["localStorage portaltrip-play"]
   planner --> passport["passport.ts<br>register → 409 → login"]
   hud --> passport
   planner --> store["travelStore"]
@@ -198,7 +204,8 @@ flowchart TD
 | DOM factories | `src/ui/` | catalog cards, errors, journey view. Untrusted text goes through `textContent` |
 | Domain | `src/models/` | `TripType`, `RiskLevel`, `ReservationStatus` (API codes plus Spanish labels), `Reservation`, catalog types, auth types |
 | Rules | `src/utils/travelRules.ts` | instant quote breakdown, booking and passport checks, credit formatting |
-| State | `src/stores/travelStore.ts`, `src/stores/sessionStore.ts` | catalog, draft and view in memory; JWT session and balance persisted |
+| State | `src/stores/travelStore.ts`, `src/stores/sessionStore.ts`, `src/stores/portalPlayStore.ts` | catalog/draft in memory; session and play cadence persisted |
+| Portal activity | `src/scripts/portal-activity.ts`, `src/scripts/portal-motion.ts` | measured movement, sequential API requests, session-safe rewards and gradual motion |
 | Network | `src/services/portalTripApi.ts` | `fetch`, 8s timeout, `AbortController`, envelope unwrapping, bearer header, `Idempotency-Key`, `?apiError=` preview |
 
 Internal imports use path aliases from `tsconfig.json` (`models/*`, `services/*`,
@@ -224,8 +231,9 @@ Internal imports use path aliases from `tsconfig.json` (`models/*`, `services/*`
 5. `POST /reservations` is sent with an `Idempotency-Key` bound to the exact request
    body. Retries reuse the key, so the balance is never charged twice. The response
    returns the reservation and `remainingBalance`.
-6. Only the session persists. `localStorage["portaltrip-session"]` stores the token,
-   its expiry and the profile. A `401` clears it and reopens the passport dialog.
+6. `localStorage["portaltrip-session"]` stores the token, expiry and profile.
+   `localStorage["portaltrip-play"]` separately stores each user's visual play cadence.
+   It cannot authorize rewards. A `401` clears the session and reopens the passport dialog.
 7. `startReservation()` navigates to `/viaje`. `portal-jump.ts` records the click
    origin, adds `html.jumping` so cards and panels vanish toward the portal while the
    starfield warps (the canvas has its own `view-transition-name`, so it stays live
@@ -286,8 +294,7 @@ Requires Node.js 24, pnpm 10 and a running PortalTrip API.
 # database, JWT and CORS defaults for http://localhost:4321.
 docker compose up -d --build
 
-# UI (.env is optional; PUBLIC_API_URL defaults to http://localhost:8080)
-cp .env.example .env
+# UI, from the frontend checkout. No .env is needed; the API defaults to localhost:8080.
 pnpm install
 pnpm dev
 ```
@@ -297,6 +304,7 @@ you do not use pnpm. The header pill pings `GET /health`, so a red uplink means 
 API is not reachable from the browser.
 
 ```bash
+pnpm test:portal # 8 activity and motion tests using Node.js
 pnpm check      # astro check && biome check
 pnpm build      # check, then astro build
 pnpm preview    # serve dist/
@@ -310,6 +318,72 @@ http://localhost:4321/?apiError=404
 http://localhost:4321/?apiError=429
 http://localhost:4321/?apiError=500
 ```
+
+## Portal interaction and rewards
+
+Only authenticated travelers can encounter a portal failure. Each failure chooses a
+new target around 38–62% and its own descent speed. The level eases toward its target;
+it does not jump down or snap upward when a reward arrives. Movement provides immediate
+visual feedback while server-confirmed progress drives recovery. The interactive portal
+uses a `pointer` cursor while help is needed. Reduced-motion users retain the activity
+cycle and numerical updates while WebGL animation is reduced.
+
+`portalPlayStore` increases failure frequency gradually after successful help, with a
+bounded interval of roughly 8–21 seconds and heat that decays over time. This is a visual
+rule only. Clearing local storage cannot reset server-side reward fatigue.
+
+### What the browser sends
+
+1. Open/resume a cycle with `POST /api/v1/users/me/portal-activity/start`.
+2. About once per second, send `cycleId`, `sequence`, `activeMs` and `distance` to
+   `POST /api/v1/users/me/portal-activity`, with the session's bearer token.
+3. Use the returned `nextSequence` for the next sample. A failed request retries the
+   same sample. Only one request is in flight.
+4. On a positive `payout`, update the balance from the server and show a short credit
+   toast and the animated counter. Ignore responses belonging to a previous session.
+
+Time is counted between moving events no more than 200 ms apart. Distance is normalized
+by the portal width. A stationary pointer or one brief pass does not qualify. Hidden-page
+activity is discarded. Expired cycles resume automatically; network errors show a temporary
+notice. The client never sends an amount and does not call a free-claim endpoint.
+
+The API requires at least 2.4 active seconds and 1.5 portal widths. Reward amounts range
+from **200 to 1620 credits**: a Gaussian base centered on 650, up to 50% for movement and
+20% for active time, then server-side fatigue. Longer idle time is not active time.
+An incomplete sample returns zero, which is not a paid reward. The server owns cooldowns,
+rolling history, cycle validation and protection against duplicate payouts.
+
+### Run all three containers locally
+
+From the backend checkout, with the repositories side by side:
+
+```sh
+PORTALTRIP_FRONTEND_PATH=../portaltrip-frontend \
+  docker compose --env-file /dev/null -f compose.yml -f compose.frontend.yml up -d --build
+```
+
+For the existing `code/Java/portaltrip/portaltrip` backend and `code/portaltrip-frontend`
+layout, omit `PORTALTRIP_FRONTEND_PATH`; the backend Compose file already defaults to
+that location. Frontend: `http://localhost:4321`. API: `http://localhost:8080`.
+The frontend API origin is embedded during the Docker build. The command skips `.env`;
+exported shell variables still apply. Fresh database volumes load the seed and reward
+tables automatically.
+
+For an existing database, apply the backend's `db/patch-portal-stipends.sql` before
+upgrading. In Coolify, run the patch in the PostgreSQL container, deploy the updated
+backend, then build/deploy this frontend. See the backend README for the SQL commands.
+The old `/users/me/portal-stipend` route is no longer supported.
+
+### Validation
+
+`pnpm test:portal` runs eight tests for measured activity, stationary/brief interaction,
+retry identity, session changes, hidden pages, smooth recovery, refresh-rate independence
+and variable descent. `pnpm build` runs Astro checks, Biome and the static production build.
+The test script uses Node's experimental VM-module flag to isolate browser dependencies.
+
+For a manual check, sign in, wait for a failure, move across the portal for several
+seconds, and confirm a single temporary credit notice and an updated balance. Stop moving
+to check that no reward arrives from hovering alone. Repeat after a rest to compare fatigue.
 
 ## Open source policy
 

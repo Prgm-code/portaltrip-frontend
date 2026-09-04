@@ -12,6 +12,7 @@
 }
 
 .hud-account {
+  position: relative;
   display: inline-flex;
   min-height: 40px;
   align-items: center;
@@ -54,6 +55,78 @@
   font-style: normal;
   font-weight: 700;
   text-shadow: 0 0 12px rgba(151, 247, 93, 0.4);
+}
+
+.hud-account em.is-ticking,
+.invite-badge b.is-ticking {
+  animation: credit-tick 0.7s ease-out;
+}
+
+.credit-pop {
+  position: absolute;
+  right: 22px;
+  top: calc(100% + 2px);
+  z-index: 2;
+  color: var(--green);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  white-space: nowrap;
+  text-shadow: 0 0 12px rgba(151, 247, 93, 0.55);
+  animation: credit-pop 1.55s ease-out forwards;
+}
+
+.invite-badge .credit-pop {
+  right: 50%;
+  top: auto;
+  bottom: calc(100% + 4px);
+  animation-name: credit-pop-up;
+}
+
+@keyframes credit-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  14% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes credit-pop-up {
+  0% {
+    opacity: 0;
+    transform: translateX(50%) translateY(6px);
+  }
+
+  14% {
+    opacity: 1;
+    transform: translateX(50%) translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(50%) translateY(-16px);
+  }
+}
+
+@keyframes credit-tick {
+  0% {
+    filter: brightness(1.8);
+  }
+
+  100% {
+    filter: none;
+  }
 }
 
 .hud-account svg {

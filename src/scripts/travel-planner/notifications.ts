@@ -7,5 +7,5 @@ export function showToast(message: string, kind: ToastKind = 'success'): void {
   if (!region) return;
   const toast = createToast(message, kind);
   region.append(toast);
-  window.setTimeout(() => toast.remove(), 3600);
+  window.setTimeout(() => toast.remove(), kind === 'credit' ? 2300 : 3600);
 }

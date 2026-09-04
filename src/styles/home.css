@@ -75,6 +75,7 @@
 }
 
 .invite-badge {
+  position: relative;
   display: grid;
   min-width: 96px;
   justify-items: center;
@@ -172,6 +173,11 @@
 
 .hero-visual .portal-wrap[data-bosons="needed"] {
   filter: drop-shadow(0 0 22px rgb(255 179 71 / 0.38));
+}
+
+.hero-visual .portal-wrap[data-bosons="needed"],
+.hero-visual .portal-wrap[data-bosons="needed"] * {
+  cursor: pointer;
 }
 
 .portal-boson-cue {

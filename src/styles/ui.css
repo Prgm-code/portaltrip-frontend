@@ -711,10 +711,34 @@ input[type="date"].control::-webkit-calendar-picker-indicator {
   background: rgba(255, 255, 255, 0.12);
 }
 
+.toast.credit {
+  min-width: 0;
+  padding: 9px 13px;
+  border-color: rgba(169, 245, 44, 0.28);
+  background: rgba(9, 22, 16, 0.7);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+  font-size: 11.5px;
+  animation:
+    toast-in 0.28s var(--ease-out),
+    toast-fade 2.15s ease-in 0.12s forwards;
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;
     transform: translateY(12px) scale(0.96);
+  }
+}
+
+@keyframes toast-fade {
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
   }
 }
 

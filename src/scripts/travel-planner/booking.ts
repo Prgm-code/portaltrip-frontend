@@ -20,6 +20,7 @@ import {
   isUnauthorizedError,
   PortalTripApiError,
 } from 'services/portalTripApiError';
+import { getSpendableBalance } from 'stores/portalPlayStore';
 import {
   getActiveSession,
   getCurrentUser,
@@ -215,13 +216,14 @@ function renderBalanceTile(total: number): void {
   const session = getActiveSession();
   tile.hidden = !session;
   if (!session) return;
-  const remaining = remainingAfter(session.user.balance, total);
+  const spendable = getSpendableBalance();
+  const remaining = remainingAfter(spendable, total);
   element('#balance-value').textContent = formatCredits(remaining);
   tile.classList.toggle('warn', remaining < 0);
   tile.title =
     remaining < 0
       ? msg().booking.missingBalance(formatBalance(Math.abs(remaining)))
-      : msg().booking.currentBalance(formatBalance(session.user.balance));
+      : msg().booking.currentBalance(formatBalance(spendable));
 }
 
 export function renderQuote(): void {
@@ -334,8 +336,8 @@ async function ensurePassport(passport: PassportInput): Promise<boolean> {
   if (result.ok) {
     showToast(
       passport.mode === 'register'
-        ? msg().toasts.registered(formatBalance(result.session.user.balance))
-        : msg().toasts.welcomedBack(formatBalance(result.session.user.balance)),
+        ? msg().toasts.registered(formatBalance(getSpendableBalance()))
+        : msg().toasts.welcomedBack(formatBalance(getSpendableBalance())),
     );
     return true;
   }
@@ -408,9 +410,7 @@ export async function submitReservation(event: SubmitEvent): Promise<void> {
     sessionStore.getState().setBalance(result.remainingBalance);
     travelStore.getState().upsertReservation(result.reservation);
     renderReservations();
-    showToast(
-      msg().toasts.booked(result.reservation.number, formatBalance(result.remainingBalance)),
-    );
+    showToast(msg().toasts.booked(result.reservation.number, formatBalance(getSpendableBalance())));
     travelStore.getState().resetDraft();
     element<HTMLFormElement>('#booking-form').reset();
     releasePassengerNamePrefill();

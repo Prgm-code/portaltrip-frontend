@@ -1,6 +1,10 @@
 // Portal de limo estilo Rick and Morty: disco 3D, células y chispas.
 
+import { nextFailDelayMs } from 'stores/portalPlayStore';
+import { getActiveSession, isAuthenticated } from 'stores/sessionStore';
 import * as THREE from 'three';
+import { PortalActivityTracker } from './portal-activity';
+import { pickPortalFall, smoothPortalLevel } from './portal-motion';
 
 const PORTAL_VERT = `
 uniform float uTime;
@@ -154,15 +158,17 @@ const LINK_LEVEL = {
 
 const BOSON_ALERT = 72;
 const BOSON_HOLD = 84;
-const STIR_GAIN = 0.04;
 
 type LinkState = keyof typeof LINK_LEVEL;
+const activities = new WeakMap<HTMLElement, PortalActivityTracker>();
 
 function portalLinkPanel(wrap: Element | null): HTMLElement | null {
   return wrap?.closest('.hero-visual')?.querySelector('[data-portal-link]') ?? null;
 }
 
 function stopLinkAnim(panel: HTMLElement): void {
+  activities.get(panel)?.stop();
+  activities.delete(panel);
   const tick = Number(panel.dataset.tick);
   const drift = Number(panel.dataset.drift);
   if (tick) cancelAnimationFrame(tick);
@@ -221,12 +227,12 @@ function pickHoldTarget(): number {
   return 98 + Math.random() * 1.2;
 }
 
-function pickSagTarget(now: number, seed: number): number {
+function pickSagTarget(now: number, seed: number, floor: number): number {
   return (
-    50 +
-    Math.sin(now / 1900 + seed) * 5.2 +
-    Math.sin(now / 640 + seed * 1.4) * 2.4 +
-    Math.sin(now / 310 + seed * 0.6) * 1.1
+    floor +
+    Math.sin(now / 1900 + seed) * 1.2 +
+    Math.sin(now / 640 + seed * 1.4) * 0.6 +
+    Math.sin(now / 310 + seed * 0.6) * 0.3
   );
 }
 
@@ -243,6 +249,22 @@ function pickLinkTarget(state: LinkState): number {
   return 24 + Math.random() * 8;
 }
 
+function syncBosonCue(panel: HTMLElement, needed: boolean): void {
+  const wrap = panel.closest('.hero-visual')?.querySelector('.portal-wrap');
+  if (wrap instanceof HTMLElement) wrap.dataset.bosons = needed ? 'needed' : '';
+  const cue = wrap?.closest('.hero-visual')?.querySelector<HTMLElement>('[data-portal-bosons]');
+  if (cue) {
+    cue.classList.toggle('is-on', needed);
+    if (needed) cue.removeAttribute('aria-hidden');
+    else cue.setAttribute('aria-hidden', 'true');
+  }
+  const status = panel.querySelector('[data-portal-link-status]');
+  if (!status) return;
+  status.textContent = needed
+    ? (panel.dataset.labelBosons ?? status.textContent)
+    : (panel.dataset.labelLive ?? status.textContent);
+}
+
 function startLinkDrift(
   panel: HTMLElement,
   pct: Element,
@@ -250,34 +272,73 @@ function startLinkDrift(
   state: LinkState,
   from: number,
 ): void {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    setLinkBase(panel, LINK_LEVEL[state]);
-    writeLinkLevel(pct, meter, LINK_LEVEL[state]);
-    return;
-  }
   const seed = Math.random() * Math.PI * 2;
   let current = from;
   let leaking = false;
+  let cycleUser = getActiveSession()?.accessToken;
   let target = pickLinkTarget(state);
   let holdUntil = 0;
+  let stirEnergy = 0;
+  let fall = pickPortalFall();
+  let lastFrame = performance.now();
   let nextAt = performance.now() + 400 + Math.random() * 900;
   const loop = (now: number): void => {
-    if (!panel.isConnected || panel.dataset.state !== state) return;
+    if (!panel.isConnected || panel.dataset.state !== state) {
+      activities.get(panel)?.stop();
+      return;
+    }
+    const elapsedMs = Math.min(100, Math.max(0, now - lastFrame));
+    lastFrame = now;
+    activities.get(panel)?.tick(now);
     if (!document.hidden) {
       if (state === 'live') {
-        if (!holdUntil) holdUntil = now + 7000 + Math.random() * 8000;
-        const feed = takeFeed(panel);
-        if (!leaking && now >= holdUntil) leaking = true;
-        if (leaking) {
-          target = pickSagTarget(now, seed);
-          current += (target - current) * 0.0072;
-          current += feed * STIR_GAIN;
-          current = clampLink(current, 38, 99);
-          if (current >= BOSON_HOLD) {
+        // El limo solo se cae con pasaporte activo; barrerlo de vuelta cobra el estipendio en la Ciudadela.
+        const activeUser = getActiveSession()?.accessToken;
+        if (cycleUser !== activeUser) {
+          activities.get(panel)?.stop();
+          activities.delete(panel);
+          leaking = false;
+          panel.dataset.bosons = '';
+          holdUntil = 0;
+          cycleUser = activeUser;
+        }
+        if (!isAuthenticated()) {
+          if (leaking) {
             leaking = false;
             panel.dataset.bosons = '';
             target = pickHoldTarget();
-            holdUntil = now + 11000 + Math.random() * 11000;
+          }
+          holdUntil = 0;
+        } else if (!holdUntil) {
+          holdUntil = now + nextFailDelayMs();
+        }
+        const feed = takeFeed(panel);
+        if (isAuthenticated() && !leaking && holdUntil && now >= holdUntil) {
+          leaking = true;
+          stirEnergy = 0;
+          fall = pickPortalFall();
+          panel.dataset.bosons = 'needed';
+          activities.set(panel, new PortalActivityTracker());
+        }
+        if (leaking) {
+          const activity = activities.get(panel);
+          stirEnergy = Math.min(1, stirEnergy * Math.exp(-elapsedMs / 700) + feed * 0.65);
+          const sag = pickSagTarget(now, seed, fall.floor);
+          const recovery = Math.max(activity?.progress ?? 0, stirEnergy * 0.6);
+          target = sag + (BOSON_HOLD - 1 - sag) * recovery;
+          current = smoothPortalLevel(
+            current,
+            target,
+            elapsedMs,
+            target < current ? fall.responseMs : 550,
+          );
+          if (activity?.rewarded) {
+            activity.stop();
+            activities.delete(panel);
+            leaking = false;
+            panel.dataset.bosons = '';
+            target = pickHoldTarget();
+            holdUntil = now + nextFailDelayMs();
           } else if (current < BOSON_ALERT) {
             panel.dataset.bosons = 'needed';
           } else {
@@ -292,9 +353,12 @@ function startLinkDrift(
         nextAt = now + 260 + Math.random() * 980;
       }
       const breath = Math.sin(now / 740 + seed) * 0.7 + Math.sin(now / 290 + seed * 1.7) * 0.32;
-      if (!leaking) current += (target + breath - current) * 0.048;
+      if (!leaking) current = smoothPortalLevel(current, target + breath, elapsedMs);
       setLinkBase(panel, current);
-      if (state !== 'live') writeLinkLevel(pct, meter, current);
+      if (state === 'live') syncBosonCue(panel, Boolean(panel.dataset.bosons));
+      if (state !== 'live' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        writeLinkLevel(pct, meter, current);
+      }
     }
     panel.dataset.drift = String(requestAnimationFrame(loop));
   };
@@ -324,6 +388,7 @@ function paintPortalLink(wrap: Element | null, state: LinkState): void {
   if (reduceMotion) {
     setLinkBase(panel, target);
     writeLinkLevel(pct, meter, target);
+    startLinkDrift(panel, pct, meter, state, target);
     return;
   }
   const started = performance.now();
@@ -392,17 +457,16 @@ function startPortal(canvas: HTMLCanvasElement): void {
   let lastPointer: { x: number; y: number } | null = null;
   const events = new AbortController();
 
-  function stirBosons(clientX: number, clientY: number): void {
+  function stirBosons(clientX: number, clientY: number, width: number): void {
     const panel = portalLinkPanel(wrap);
     if (!lastPointer) {
-      addFeed(panel, 18);
       lastPointer = { x: clientX, y: clientY };
       return;
     }
     const delta = Math.hypot(clientX - lastPointer.x, clientY - lastPointer.y);
     lastPointer = { x: clientX, y: clientY };
-    const stroke = Math.min(delta, 52);
-    addFeed(panel, stroke * (0.55 + stroke / 52));
+    if (panel) activities.get(panel)?.move(delta / width);
+    addFeed(panel, Math.min(delta / width, 0.25));
   }
 
   function aimFromPointer(clientX: number, clientY: number): void {
@@ -416,7 +480,7 @@ function startPortal(canvas: HTMLCanvasElement): void {
     lookTarget.x = -y * 0.48;
     const dist = Math.hypot(x, y);
     hoverTarget = 0.24 + 0.76 * Math.max(0, 1 - dist);
-    stirBosons(clientX, clientY);
+    stirBosons(clientX, clientY, box.width);
   }
 
   function resetAim(): void {
@@ -424,21 +488,6 @@ function startPortal(canvas: HTMLCanvasElement): void {
     lookTarget.y = 0;
     hoverTarget = 0;
     lastPointer = null;
-  }
-
-  function syncBosonCue(panel: HTMLElement, needed: boolean): void {
-    if (wrap instanceof HTMLElement) wrap.dataset.bosons = needed ? 'needed' : '';
-    const cue = wrap?.closest('.hero-visual')?.querySelector<HTMLElement>('[data-portal-bosons]');
-    if (cue) {
-      cue.classList.toggle('is-on', needed);
-      if (needed) cue.removeAttribute('aria-hidden');
-      else cue.setAttribute('aria-hidden', 'true');
-    }
-    const status = panel.querySelector('[data-portal-link-status]');
-    if (!status) return;
-    status.textContent = needed
-      ? (panel.dataset.labelBosons ?? status.textContent)
-      : (panel.dataset.labelLive ?? status.textContent);
   }
 
   function syncLiveLink(): void {
@@ -463,7 +512,7 @@ function startPortal(canvas: HTMLCanvasElement): void {
     linkScale += scaleVel;
     const droop = Math.max(0, (BOSON_ALERT - display) / 55);
     group.scale.set(linkScale * (1 + droop * 0.05), linkScale * (1 - droop * 0.1), linkScale);
-    syncBosonCue(panel, panel.dataset.bosons === 'needed');
+    syncBosonCue(panel, Boolean(panel.dataset.bosons));
   }
 
   function updateScrollTilt(): void {
@@ -665,25 +714,25 @@ function startPortal(canvas: HTMLCanvasElement): void {
   io.observe(canvas);
 
   const host = wrap ?? canvas;
-  if (!reduceMotion.matches) {
-    host.addEventListener(
-      'pointermove',
-      (event) => {
-        if (event instanceof PointerEvent) aimFromPointer(event.clientX, event.clientY);
-      },
-      { signal: events.signal },
-    );
-    host.addEventListener(
-      'pointerenter',
-      (event) => {
-        if (event instanceof PointerEvent) aimFromPointer(event.clientX, event.clientY);
-      },
-      { signal: events.signal },
-    );
-    host.addEventListener('pointerleave', resetAim, { signal: events.signal });
-    window.addEventListener('scroll', updateScrollTilt, { signal: events.signal, passive: true });
-    updateScrollTilt();
-  }
+  host.addEventListener(
+    'pointermove',
+    (event) => {
+      if (event instanceof PointerEvent && event.isTrusted)
+        aimFromPointer(event.clientX, event.clientY);
+    },
+    { signal: events.signal },
+  );
+  host.addEventListener(
+    'pointerenter',
+    (event) => {
+      if (event instanceof PointerEvent && event.isTrusted)
+        aimFromPointer(event.clientX, event.clientY);
+    },
+    { signal: events.signal },
+  );
+  host.addEventListener('pointerleave', resetAim, { signal: events.signal });
+  window.addEventListener('scroll', updateScrollTilt, { signal: events.signal, passive: true });
+  updateScrollTilt();
 
   window.addEventListener('resize', () => {
     updateScrollTilt();

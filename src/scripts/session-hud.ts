@@ -7,7 +7,13 @@ import { PlannerView } from 'models/reservation';
 import { authenticate, readPassport, setPassportMode } from 'scripts/passport';
 import { showToast } from 'scripts/travel-planner/notifications';
 import { getProfile, SESSION_EXPIRED_EVENT } from 'services/portalTripApi';
-import { getActiveSession, sessionMillisecondsLeft, sessionStore } from 'stores/sessionStore';
+import { getSpendableBalance, portalPlayStore } from 'stores/portalPlayStore';
+import {
+  getActiveSession,
+  getCurrentUser,
+  sessionMillisecondsLeft,
+  sessionStore,
+} from 'stores/sessionStore';
 import { travelStore } from 'stores/travelStore';
 import { appendFormErrors } from 'ui/appElements';
 import { formatBalance } from 'utils/travelRules';
@@ -16,7 +22,12 @@ import { formatBalance } from 'utils/travelRules';
 export const SHOW_RESERVATIONS_EVENT = 'portaltrip:show-reservations';
 
 const EXPIRY_WARNING_MS = 2 * 60 * 1000;
+const CREDIT_POP_MAX = 4500;
 let expiryTimer: number | undefined;
+let lastUserId: string | null = null;
+let lastGrantAt = 0;
+let lastSpendable: number | null = null;
+const creditTicks = new WeakMap<HTMLElement, number>();
 
 function query<T extends HTMLElement>(selector: string): T | null {
   return document.querySelector<T>(selector);
@@ -28,6 +39,84 @@ function setAccountMenu(open: boolean): void {
   if (!chip || !menu) return;
   chip.setAttribute('aria-expanded', String(open));
   menu.hidden = !open;
+}
+
+function creditGain(): number {
+  const userId = getCurrentUser()?.id ?? null;
+  if (userId !== lastUserId) {
+    lastUserId = userId;
+    lastGrantAt = portalPlayStore.getState().lastGrant?.at ?? 0;
+    return 0;
+  }
+  const grant = portalPlayStore.getState().lastGrant;
+  lastUserId = userId;
+  if (!grant || grant.at === lastGrantAt) return 0;
+  lastGrantAt = grant.at;
+  if (grant.payout <= 0 || grant.payout > CREDIT_POP_MAX) return 0;
+  return Math.round(grant.payout);
+}
+
+function easeOut(t: number): number {
+  return 1 - (1 - t) ** 3;
+}
+
+function countCredits(node: HTMLElement, from: number, to: number): void {
+  const previous = creditTicks.get(node);
+  if (previous) cancelAnimationFrame(previous);
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce || from === to) {
+    node.textContent = formatBalance(to);
+    node.dataset.credits = String(to);
+    return;
+  }
+  const started = performance.now();
+  const step = (now: number): void => {
+    const t = Math.min(1, (now - started) / 720);
+    node.textContent = formatBalance(from + (to - from) * easeOut(t));
+    if (t < 1) {
+      creditTicks.set(node, requestAnimationFrame(step));
+      return;
+    }
+    node.textContent = formatBalance(to);
+    node.dataset.credits = String(to);
+    creditTicks.delete(node);
+  };
+  creditTicks.set(node, requestAnimationFrame(step));
+}
+
+function popCredit(host: HTMLElement | null, amount: number): void {
+  if (!host) return;
+  const pop = document.createElement('span');
+  pop.className = 'credit-pop';
+  pop.textContent = `+${formatBalance(amount)}`;
+  pop.setAttribute('aria-hidden', 'true');
+  host.append(pop);
+  pop.addEventListener('animationend', () => pop.remove());
+}
+
+function paintSpendable(next: number, gain: number): void {
+  const from = lastSpendable ?? next;
+  const animate = gain > 0 && lastSpendable != null;
+  document.querySelectorAll<HTMLElement>('[data-account-balance]').forEach((node) => {
+    node.classList.remove('is-ticking');
+    if (animate) {
+      void node.offsetWidth;
+      node.classList.add('is-ticking');
+      countCredits(node, from, next);
+    } else {
+      const pending = creditTicks.get(node);
+      if (pending) cancelAnimationFrame(pending);
+      creditTicks.delete(node);
+      node.textContent = formatBalance(next);
+      node.dataset.credits = String(next);
+    }
+  });
+  if (animate) {
+    popCredit(query('#account-chip'), gain);
+    popCredit(document.querySelector<HTMLElement>('.credit-invite.active .invite-badge'), gain);
+    showToast(msg().toasts.portalStipend(formatBalance(gain)), 'credit');
+  }
+  lastSpendable = next;
 }
 
 /** Refleja la sesión en header, invitaciones del héroe y atributo raíz. */
@@ -45,9 +134,7 @@ export function syncSessionHud(): void {
     document.querySelectorAll<HTMLElement>('[data-account-name]').forEach((node) => {
       node.textContent = firstName;
     });
-    document.querySelectorAll<HTMLElement>('[data-account-balance]').forEach((node) => {
-      node.textContent = formatBalance(session.user.balance);
-    });
+    paintSpendable(getSpendableBalance(), creditGain());
     document.querySelectorAll<HTMLElement>('[data-account-email]').forEach((node) => {
       node.textContent = session.user.email;
     });
@@ -55,6 +142,9 @@ export function syncSessionHud(): void {
     query<HTMLElement>('#account-chip')?.classList.toggle('expiring', expiring);
   } else {
     setAccountMenu(false);
+    lastUserId = null;
+    lastGrantAt = 0;
+    lastSpendable = null;
   }
   scheduleExpiry(session ? sessionMillisecondsLeft(session) : 0);
 }
@@ -127,7 +217,7 @@ async function submitPassportDialog(form: HTMLFormElement): Promise<void> {
     }
     closePassportDialog();
     form.reset();
-    showToast(msg().toasts.passportActive(formatBalance(result.session.user.balance)));
+    showToast(msg().toasts.passportActive(formatBalance(getSpendableBalance())));
   } finally {
     if (submit) submit.disabled = false;
     form.removeAttribute('aria-busy');
