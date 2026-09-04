@@ -101,8 +101,9 @@ function bindBookingEvents(bookingForm: HTMLFormElement): void {
       showFormErrors([]);
       return;
     }
-    // El nombre del pasajero sugiere el nombre del pasaporte hasta que se edite a mano.
+    // El nombre del pasajero sugiere el del pasaporte hasta que se edite a mano.
     if (event.target instanceof HTMLInputElement && event.target.name === 'passengerName') {
+      event.target.dataset.touched = 'true';
       const fullName = document.getElementById('fullName');
       if (fullName instanceof HTMLInputElement && !fullName.dataset.touched) {
         fullName.value = event.target.value;

@@ -20,7 +20,12 @@ import {
   isUnauthorizedError,
   PortalTripApiError,
 } from 'services/portalTripApiError';
-import { getActiveSession, isAuthenticated, sessionStore } from 'stores/sessionStore';
+import {
+  getActiveSession,
+  getCurrentUser,
+  isAuthenticated,
+  sessionStore,
+} from 'stores/sessionStore';
 import { travelStore } from 'stores/travelStore';
 import { createApiFormErrorNotice, createApiFormLoadingNotice } from 'ui/apiErrorElements';
 import {
@@ -135,6 +140,27 @@ export function renderBookingApiState(): void {
   }
 }
 
+function passengerNameInput(): HTMLInputElement {
+  return element<HTMLInputElement>('#passengerName');
+}
+
+/** Completa el pasajero con el nombre de la cuenta si la persona no lo editó. */
+function prefillPassengerNameFromSession(): void {
+  const user = getCurrentUser();
+  if (!user) return;
+  const input = passengerNameInput();
+  if (input.dataset.touched === 'true') return;
+  const name = user.fullName.trim();
+  if (!name) return;
+  if (input.value === name && travelStore.getState().draft.passengerName === name) return;
+  input.value = name;
+  travelStore.getState().setDraft({ passengerName: name });
+}
+
+function releasePassengerNamePrefill(): void {
+  delete passengerNameInput().dataset.touched;
+}
+
 // El paso de pasaporte solo existe para visitantes sin sesión.
 export function renderPassportStep(): void {
   const step = passportStep();
@@ -147,14 +173,16 @@ export function renderPassportStep(): void {
   element('.submit-note span').textContent = authenticated
     ? copy.noteAuthenticated
     : copy.noteAnonymous;
-  if (!authenticated) {
+  if (authenticated) {
+    prefillPassengerNameFromSession();
+  } else {
     const mode = step.dataset.passportMode === 'login' ? 'login' : 'register';
     setPassportMode(step, mode);
     const title = step.querySelector<HTMLElement>('[data-passport-step-title]');
     if (title)
       title.textContent = mode === 'register' ? copy.stepRegisterTitle : copy.stepLoginTitle;
     const fullName = step.querySelector<HTMLInputElement>('[name="fullName"]');
-    const passengerName = element<HTMLInputElement>('#passengerName').value.trim();
+    const passengerName = passengerNameInput().value.trim();
     if (fullName && !fullName.value && passengerName) fullName.value = passengerName;
   }
   if (!submitting) setSubmitLabel(submitLabel());
@@ -385,6 +413,7 @@ export async function submitReservation(event: SubmitEvent): Promise<void> {
     );
     travelStore.getState().resetDraft();
     element<HTMLFormElement>('#booking-form').reset();
+    releasePassengerNamePrefill();
     syncFormFromDraft();
     renderPassportStep();
     setActiveView(PlannerView.RESERVATIONS);
