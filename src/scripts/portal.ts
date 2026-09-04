@@ -177,6 +177,25 @@ function writeLinkLevel(pct: Element, meter: HTMLMeterElement | null, value: num
   if (meter) meter.value = clampLink(value, 0, 100);
 }
 
+function setLinkBase(panel: HTMLElement, value: number): void {
+  panel.dataset.base = String(clampLink(value, 0, 100));
+}
+
+function readLinkBase(panel: HTMLElement, fallback: number): number {
+  const value = Number(panel.dataset.base);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+/** El limo crece con el enlace: 70% cabe en el hueco, 100% se asoma un poco. */
+function scaleFromLink(value: number): number {
+  const t = (clampLink(value, 70, 100) - 70) / 30;
+  return 0.78 + t * 0.36;
+}
+
+function liveLinkDisplay(base: number, hover: number): number {
+  return base + (99.4 - base) * clampLink(hover, 0, 1);
+}
+
 function pickLinkTarget(state: LinkState): number {
   const roll = Math.random();
   if (state === 'live') {
@@ -203,6 +222,7 @@ function startLinkDrift(
   from: number,
 ): void {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    setLinkBase(panel, LINK_LEVEL[state]);
     writeLinkLevel(pct, meter, LINK_LEVEL[state]);
     return;
   }
@@ -219,7 +239,9 @@ function startLinkDrift(
       }
       const breath = Math.sin(now / 640 + seed) * 0.55 + Math.sin(now / 310 + seed * 1.7) * 0.25;
       current += (target + breath - current) * 0.055;
-      writeLinkLevel(pct, meter, current);
+      setLinkBase(panel, current);
+      // En vivo el fotograma 3D pinta el medidor junto con el tamaño.
+      if (state !== 'live') writeLinkLevel(pct, meter, current);
     }
     panel.dataset.drift = String(requestAnimationFrame(loop));
   };
@@ -242,9 +264,11 @@ function paintPortalLink(wrap: Element | null, state: LinkState): void {
   const previous = meter?.value ?? LINK_LEVEL.boot;
   stopLinkAnim(panel);
   panel.dataset.state = state;
+  setLinkBase(panel, previous);
   if (status && labels[state]) status.textContent = labels[state];
   if (!pct) return;
   if (reduceMotion) {
+    setLinkBase(panel, target);
     writeLinkLevel(pct, meter, target);
     return;
   }
@@ -254,7 +278,8 @@ function paintPortalLink(wrap: Element | null, state: LinkState): void {
     if (!panel.isConnected) return;
     const t = Math.min(1, (now - started) / duration);
     const value = previous + (target - previous) * t;
-    writeLinkLevel(pct, meter, value);
+    setLinkBase(panel, value);
+    if (state !== 'live') writeLinkLevel(pct, meter, value);
     if (t < 1) {
       panel.dataset.tick = String(requestAnimationFrame(step));
       return;
@@ -305,6 +330,9 @@ function startPortal(canvas: HTMLCanvasElement): void {
   const look = { x: 0, y: 0 };
   const lookTarget = { x: 0, y: 0 };
   let scrollTilt = 0;
+  let hover = 0;
+  let hoverTarget = 0;
+  let linkScale = 1;
   const events = new AbortController();
 
   function aimFromPointer(clientX: number, clientY: number): void {
@@ -312,13 +340,35 @@ function startPortal(canvas: HTMLCanvasElement): void {
     if (box.width <= 0 || box.height <= 0) return;
     const nx = ((clientX - box.left) / box.width) * 2 - 1;
     const ny = ((clientY - box.top) / box.height) * 2 - 1;
-    lookTarget.y = Math.max(-1, Math.min(1, nx)) * 0.55;
-    lookTarget.x = Math.max(-1, Math.min(1, -ny)) * 0.48;
+    const x = Math.max(-1, Math.min(1, nx));
+    const y = Math.max(-1, Math.min(1, ny));
+    lookTarget.y = x * 0.55;
+    lookTarget.x = -y * 0.48;
+    const dist = Math.hypot(x, y);
+    hoverTarget = 0.24 + 0.76 * Math.max(0, 1 - dist);
   }
 
   function resetAim(): void {
     lookTarget.x = 0;
     lookTarget.y = 0;
+    hoverTarget = 0;
+  }
+
+  function syncLiveLink(): void {
+    const panel = portalLinkPanel(wrap);
+    if (panel?.dataset.state !== 'live') {
+      linkScale += (1 - linkScale) * 0.12;
+      group.scale.setScalar(linkScale);
+      return;
+    }
+    const pct = panel.querySelector('[data-portal-link-pct]');
+    const meter = panel.querySelector('meter');
+    const base = readLinkBase(panel, LINK_LEVEL.live);
+    const display = liveLinkDisplay(base, hover);
+    if (pct) writeLinkLevel(pct, meter, display);
+    const target = base >= 75 ? scaleFromLink(display) : 1;
+    linkScale += (target - linkScale) * 0.14;
+    group.scale.setScalar(linkScale);
   }
 
   function updateScrollTilt(): void {
@@ -458,6 +508,12 @@ function startPortal(canvas: HTMLCanvasElement): void {
     resize();
     const time = reduceMotion.matches ? 1.1 : (now - born) / 1000;
     portalMat.uniforms.uTime.value = time;
+    hover += (hoverTarget - hover) * 0.12;
+    if (wrap && !wrap.classList.contains('portal-live')) {
+      wrap.classList.add('portal-live');
+      paintPortalLink(wrap, 'live');
+    }
+    syncLiveLink();
     look.x += (lookTarget.x - look.x) * 0.08;
     look.y += (lookTarget.y - look.y) * 0.08;
     group.rotation.x = restTilt.x + Math.sin(time * 0.22) * 0.05 + look.x + scrollTilt * 0.28;
@@ -469,10 +525,6 @@ function startPortal(canvas: HTMLCanvasElement): void {
     placeBubbles(time);
     placeSparks(time);
     renderer.render(scene, camera);
-    if (wrap && !wrap.classList.contains('portal-live')) {
-      wrap.classList.add('portal-live');
-      paintPortalLink(wrap, 'live');
-    }
   }
 
   function loop(now: number): void {
@@ -512,6 +564,13 @@ function startPortal(canvas: HTMLCanvasElement): void {
   if (!reduceMotion.matches) {
     host.addEventListener(
       'pointermove',
+      (event) => {
+        if (event instanceof PointerEvent) aimFromPointer(event.clientX, event.clientY);
+      },
+      { signal: events.signal },
+    );
+    host.addEventListener(
+      'pointerenter',
       (event) => {
         if (event instanceof PointerEvent) aimFromPointer(event.clientX, event.clientY);
       },
