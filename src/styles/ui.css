@@ -498,6 +498,8 @@ input[type="date"].control::-webkit-calendar-picker-indicator {
   display: grid;
   width: var(--portal-size);
   aspect-ratio: 1;
+  overflow: visible;
+  isolation: isolate;
   place-items: center;
   pointer-events: auto;
   filter: drop-shadow(0 0 28px rgb(151 247 93 / 0.28));
@@ -511,12 +513,8 @@ input[type="date"].control::-webkit-calendar-picker-indicator {
   border-radius: 50%;
   background: radial-gradient(circle, rgb(151 247 93 / 0.28), transparent 68%);
   filter: blur(14px);
-  pointer-events: none;
-}
-
-.portal-live::before,
-.portal-fallback::before {
   opacity: 0;
+  pointer-events: none;
 }
 
 .portal-wrap::after {
@@ -539,11 +537,83 @@ input[type="date"].control::-webkit-calendar-picker-indicator {
   height: 100%;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.35s ease;
+  transform-origin: center;
 }
 
 .portal-live .portal-canvas {
+  animation: portal-awaken 1.08s linear both;
+}
+
+.portal-bloom {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.portal-bloom::before,
+.portal-bloom::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 70%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: 0;
+  translate: -50% -50%;
+}
+
+.portal-live .portal-bloom::before {
+  border: 3px solid rgb(223 255 178 / 0.92);
+  box-shadow:
+    0 0 28px rgb(151 247 93 / 0.8),
+    inset 0 0 16px rgb(151 247 93 / 0.4);
+  animation: portal-open-ring 0.98s 0.1s linear both;
+}
+
+.portal-live .portal-bloom::after {
+  border: 2px dashed rgb(77 232 244 / 0.7);
+  box-shadow: 0 0 18px rgb(77 232 244 / 0.4);
+  animation: portal-open-ring 1.05s 0.2s linear both;
+}
+
+.portal-hole {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  width: 68%;
+  height: 68%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  opacity: 0;
+  color: #0b1608;
+  pointer-events: none;
+}
+
+.portal-hole > * {
+  position: relative;
+  z-index: 2;
+}
+
+.portal-live .portal-hole {
+  animation: portal-hole-in 0.62s 0.28s var(--ease-portal) both;
+}
+
+.portal-fallback .portal-hole {
   opacity: 1;
+  animation: none;
+}
+
+.portal-fallback .portal-bloom {
+  display: none;
+}
+
+.portal-live .portal-loader {
+  display: none;
 }
 
 .portal-rings,
@@ -584,25 +654,6 @@ input[type="date"].control::-webkit-calendar-picker-indicator {
 
 .portal-fallback .portal-rings {
   display: block;
-}
-
-.portal-hole {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  width: 68%;
-  height: 68%;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border-radius: 50%;
-  color: #0b1608;
-  pointer-events: none;
-}
-
-.portal-hole > * {
-  position: relative;
-  z-index: 2;
 }
 
 /* Anillo giratorio usado dentro del portal mientras carga. */
@@ -691,6 +742,73 @@ input[type="date"].control::-webkit-calendar-picker-indicator {
 @keyframes portal-drift {
   50% {
     transform: translateY(-8px);
+  }
+}
+
+@keyframes portal-awaken {
+  0%,
+  14% {
+    opacity: 0.7;
+    transform: scale(0.26);
+    filter: brightness(2.4) saturate(1.7) blur(6px);
+  }
+  36% {
+    opacity: 1;
+    transform: scale(0.58);
+    filter: brightness(1.45) saturate(1.25) blur(1px);
+  }
+  62% {
+    transform: scale(0.92);
+    filter: brightness(1.12) saturate(1.1) blur(0);
+  }
+  78% {
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: none;
+  }
+}
+
+@keyframes portal-open-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.32) rotate(-18deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.38) rotate(128deg);
+  }
+}
+
+@keyframes portal-hole-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-live .portal-canvas,
+  .portal-live .portal-bloom::before,
+  .portal-live .portal-bloom::after,
+  .portal-live .portal-hole {
+    animation: none;
+  }
+
+  .portal-live .portal-canvas,
+  .portal-live .portal-hole {
+    opacity: 1;
+    transform: none;
+    filter: none;
   }
 }
 
